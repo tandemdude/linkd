@@ -20,13 +20,7 @@
 # SOFTWARE.
 from __future__ import annotations
 
-__all__ = [
-    "DI_ENABLED",
-    "INJECTED",
-    "AutoInjecting",
-    "DependencyInjectionManager",
-    "with_di",
-]
+__all__ = ["DI_CONTAINER", "DI_ENABLED", "INJECTED", "AutoInjecting", "DependencyInjectionManager", "with_di"]
 
 import collections
 import contextlib

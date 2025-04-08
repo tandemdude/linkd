@@ -29,6 +29,7 @@ from linkd.registry import *
 from linkd.solver import *
 
 __all__ = [
+    "DI_CONTAINER",
     "DI_ENABLED",
     "INJECTED",
     "AutoInjecting",
