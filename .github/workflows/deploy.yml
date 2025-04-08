@@ -18,6 +18,8 @@ on:
         type: boolean
         default: true
 
+permissions: write-all
+
 jobs:
   deploy:
     name: Deploy
