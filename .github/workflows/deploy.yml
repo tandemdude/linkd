@@ -1,0 +1,77 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: "The type of the release version"
+        required: true
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+          - alpha
+        default: patch
+      increment:
+        description: "Increment the version before release"
+        type: boolean
+        default: true
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Update Version
+        id: update-version
+        run: |
+          output=$(python scripts/deploy/update_version.py ${{ inputs.version_type }} ${{ inputs.increment }})
+          echo "VERSION=$output" >> $GITHUB_OUTPUT
+
+      - name: Generate Changelogs
+        run: |
+          pip install ".[dev.changelog]"
+          towncrier build --yes --version ${{ steps.update-version.outputs.VERSION }}
+          python scripts/deploy/populate_changelog.py CHANGES.md docs/source/changelogs/v3-changelog.md
+
+      - name: Commit Changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Bump version, update changelog"
+          file_pattern: "linkd/*.py docs/source/changelogs/*.md"
+
+      - name: Upload to PyPI
+        env:
+          FLIT_USERNAME: ${{ secrets.FLIT_USERNAME }}
+          FLIT_PASSWORD: ${{ secrets.FLIT_PASSWORD }}
+        run: |
+          pip install ".[dev.release]"
+          flit publish
+
+      - name: Create Tag
+        run: |
+          git tag ${{ steps.update-version.outputs.VERSION }}
+          git push origin ${{ steps.update-version.outputs.VERSION }}
+
+      - name: Prepare Release Description
+        run: |
+          tail -n +3 CHANGES.md > CHANGES.tmp.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          name: "v${{ steps.update-version.outputs.VERSION }}"
+          tag_name: "refs/tags/${{ steps.update-version.outputs.VERSION }}"
+          body_path: CHANGES.tmp.md
+          prerelease: ${{ inputs.version_type == 'alpha' }}

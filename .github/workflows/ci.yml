@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches-ignore:
+      - "dependabot/**"
+  pull_request:
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Run format checks
+        run: |
+          pip install nox
+          nox -s format_check
+
+  type-check:
+    name: Type-check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Run pyright
+        run: |
+          pip install nox
+          nox -s typecheck
+
+      - name: Verify type-completeness
+        run: |
+          pip install ".[dev.typecheck]"
+          pyright --verifytypes linkd --ignoreexternal
+
+  slotscheck:
+    name: Slotscheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Run slotscheck
+        run: |
+          pip install nox
+          nox -s slotscheck
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Run pytest
+        run: |
+          pip install ".[localization,crontrigger,dev.test]"
+          pytest --cov linkd --cov-report=xml --junitxml=junit.xml tests
+
+      - name: Upload coverage to CodeCov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v5.4.0
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}

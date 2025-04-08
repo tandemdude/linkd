@@ -1,0 +1,50 @@
+# Python cached sources
+__pycache__/
+*.pyc
+
+# Virtual environments
+.venv*/
+venv*/
+.nox/
+
+# PyCharm/IntelliJ-generated files
+*.iml
+.idea/
+
+# Visual Studio Code-generated files
+.settings/
+.project
+.vscode/
+.vs/
+
+# Secrets
+.pypirc
+
+# Setuptools/twine-generated files, compiled sources.
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+*.so 
+*.o 
+*.pyd
+
+# Documentation
+docs/build/
+docs/source/api-references/
+docs/source/api-reference.rst
+CHANGES.md
+CHANGES.tmp.md
+
+# Test files
+main.py
+
+# Stupid OSX files
+.DS_Store
+
+# Mypy
+mypy_report/
+
+# Coverage
+htmlcov/
+.coverage
