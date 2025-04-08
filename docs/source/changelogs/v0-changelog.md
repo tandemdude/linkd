@@ -8,6 +8,13 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 
 <!-- next-changelog -->
 
+## v0.0.2 (2025-04-08)
+### Breaking Changes
+
+- Renamed `with_di` decorator to `inject` - use `@linkd.inject` instead of `@linkd.with_di`.
+
+----
+
 ## v0.0.1 (2025-04-08)
 
 - Initial release. No changes to see here!
