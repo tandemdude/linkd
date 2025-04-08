@@ -20,16 +20,22 @@
 # SOFTWARE.
 from __future__ import annotations
 
-__all__ = ["Marker", "get_dependency_id", "maybe_await"]
+__all__ = ["Marker", "MaybeAwaitable", "get_dependency_id", "maybe_await"]
 
 import functools
 import inspect
 import typing as t
 
-if t.TYPE_CHECKING:
-    from linkd import types
-
 T = t.TypeVar("T")
+
+MaybeAwaitable: t.TypeAlias = t.Union[T, t.Coroutine[t.Any, t.Any, T]]
+"""TypeAlias for an item that might be able to be awaited."""
+
+ANNOTATION_PARSE_LOCAL_INCLUDE_MODULES: set[str] = {"linkd"}
+"""
+Modules that will be included into the locals dict when parsing injected function annotations.
+Only modify this if you know what you are doing.
+"""
 
 
 class Marker:
@@ -76,7 +82,7 @@ def get_dependency_id(dependency_type: t.Any) -> str:
     return f"{dependency_type.__module__}.{getattr(dependency_type, '__qualname__', dependency_type.__name__)}"
 
 
-async def maybe_await(item: types.MaybeAwaitable[T]) -> T:
+async def maybe_await(item: MaybeAwaitable[T]) -> T:
     """
     Await the given item if it is a coroutine, otherwise just return the given item.
 

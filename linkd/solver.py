@@ -44,8 +44,6 @@ if t.TYPE_CHECKING:
     from collections.abc import Awaitable
     from collections.abc import Callable
 
-    from linkd import types
-
 P = t.ParamSpec("P")
 R = t.TypeVar("R")
 T = t.TypeVar("T")
@@ -83,9 +81,9 @@ class _NoOpContainer(container.Container):
     def add_factory(
         self,
         typ: type[T],
-        factory: Callable[..., types.MaybeAwaitable[T]],
+        factory: Callable[..., utils.MaybeAwaitable[T]],
         *,
-        teardown: Callable[[T], types.MaybeAwaitable[None]] | None = None,
+        teardown: Callable[[T], utils.MaybeAwaitable[None]] | None = None,
     ) -> None: ...
 
     def add_value(
@@ -93,7 +91,7 @@ class _NoOpContainer(container.Container):
         typ: type[T],
         value: T,
         *,
-        teardown: Callable[[T], types.MaybeAwaitable[None]] | None = None,
+        teardown: Callable[[T], utils.MaybeAwaitable[None]] | None = None,
     ) -> None: ...
 
     def _get(self, dependency_id: str) -> t.Any:
@@ -202,6 +200,7 @@ class DependencyInjectionManager:
                     new_container.add_value(cls, new_container)
 
                 if context == context_.Contexts.DEFAULT:
+                    new_container.add_value(DependencyInjectionManager, self)
                     self._default_container = new_container
 
                 created = True
@@ -239,7 +238,9 @@ def _parse_injectable_params(func: Callable[..., t.Any]) -> tuple[list[tuple[str
     positional_or_keyword_params: list[tuple[str, t.Any]] = []
     keyword_only_params: dict[str, t.Any] = {}
 
-    parameters = inspect.signature(func, locals={"linkd": sys.modules["linkd"]}, eval_str=True).parameters
+    parameters = inspect.signature(
+        func, locals={m: sys.modules[m] for m in utils.ANNOTATION_PARSE_LOCAL_INCLUDE_MODULES}, eval_str=True
+    ).parameters
     for parameter in parameters.values():
         if (
             # If the parameter has no annotation
@@ -348,7 +349,7 @@ class AutoInjecting:
 def inject(func: AsyncFnT) -> AsyncFnT: ...
 @t.overload
 def inject(func: Callable[P, R]) -> Callable[P, Coroutine[t.Any, t.Any, R]]: ...
-def inject(func: Callable[P, types.MaybeAwaitable[R]]) -> Callable[P, Coroutine[t.Any, t.Any, R]]:
+def inject(func: Callable[P, utils.MaybeAwaitable[R]]) -> Callable[P, Coroutine[t.Any, t.Any, R]]:
     """
     Decorator that enables dependency injection on the decorated function. If dependency injection
     has been disabled globally then this function does nothing and simply returns the object that was passed in.

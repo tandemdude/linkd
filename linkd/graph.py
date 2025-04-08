@@ -29,14 +29,13 @@ import typing as t
 
 from linkd import conditions
 from linkd import exceptions
+from linkd import utils
 
 if t.TYPE_CHECKING:
     from collections.abc import Callable
     from collections.abc import Collection
     from collections.abc import Mapping
-    from collections.abc import Set
 
-    from linkd import types
 
 T = t.TypeVar("T")
 
@@ -55,20 +54,20 @@ class DependencyData(t.Generic[T]):
 
     def __init__(
         self,
-        factory_method: Callable[..., types.MaybeAwaitable[T]],
+        factory_method: Callable[..., utils.MaybeAwaitable[T]],
         factory_params: Mapping[str, conditions.DependencyExpression[T]],
-        teardown_method: Callable[[T], types.MaybeAwaitable[None]] | None,
+        teardown_method: Callable[[T], utils.MaybeAwaitable[None]] | None,
     ) -> None:
-        self.factory_method: Callable[..., types.MaybeAwaitable[T]] = factory_method
+        self.factory_method: Callable[..., utils.MaybeAwaitable[T]] = factory_method
         """The method used to create the dependency."""
         self.factory_params: Mapping[str, conditions.DependencyExpression[T]] = factory_params
         """Mapping of param name to dependency expression for any dependencies the factory depends on."""
-        self.teardown_method: Callable[[T], types.MaybeAwaitable[None]] | None = teardown_method
+        self.teardown_method: Callable[[T], utils.MaybeAwaitable[None]] | None = teardown_method
         """The optional method used to teardown the dependency."""
 
 
 def resolve_dependency_expression_for_all_parameters(
-    func: Callable[..., types.MaybeAwaitable[t.Any]],
+    func: Callable[..., utils.MaybeAwaitable[t.Any]],
 ) -> dict[str, conditions.DependencyExpression[t.Any]]:
     """
     Parse all parameters of the given callable and find the dependency ID that should be used when
@@ -85,7 +84,9 @@ def resolve_dependency_expression_for_all_parameters(
     """
     dependencies: dict[str, conditions.DependencyExpression[t.Any]] = {}
 
-    for param in inspect.signature(func, locals={"linkd": sys.modules["linkd"]}, eval_str=True).parameters.values():
+    for param in inspect.signature(
+        func, locals={m: sys.modules[m] for m in utils.ANNOTATION_PARSE_LOCAL_INCLUDE_MODULES}, eval_str=True
+    ).parameters.values():
         if param.kind in (
             inspect.Parameter.POSITIONAL_ONLY,
             inspect.Parameter.VAR_POSITIONAL,
@@ -104,8 +105,8 @@ def resolve_dependency_expression_for_all_parameters(
 def populate_graph_for_dependency(
     graph: DiGraph,
     dependency_id: str,
-    factory: Callable[..., types.MaybeAwaitable[t.Any]],
-    teardown: Callable[..., types.MaybeAwaitable[None]] | None,
+    factory: Callable[..., utils.MaybeAwaitable[t.Any]],
+    teardown: Callable[..., utils.MaybeAwaitable[None]] | None,
 ) -> None:
     """
     Populate the given dependency graph with the given dependency ID, using the factory to resolve any dependencies
@@ -167,7 +168,7 @@ class DiGraph:
         return self._nodes
 
     @property
-    def edges(self) -> Set[tuple[str, str]]:
+    def edges(self) -> set[tuple[str, str]]:
         """
         Set containing all edges within this graph. An edge is represented by a tuple where the first element
         is the origin node, and the second element is the destination node.
@@ -178,7 +179,7 @@ class DiGraph:
 
         return all_edges
 
-    def out_edges(self, id_: str, /) -> Set[tuple[str, str]]:
+    def out_edges(self, id_: str, /) -> set[tuple[str, str]]:
         """
         Get the out edges for the node with the given dependency ID. In the context of DI, the edges
         represent the dependencies that the requested dependency directly depends on.
@@ -191,7 +192,7 @@ class DiGraph:
         """
         return {(id_, other) for other in self._adjacency[id_]}
 
-    def in_edges(self, id_: str, /) -> Set[tuple[str, str]]:
+    def in_edges(self, id_: str, /) -> set[tuple[str, str]]:
         """
         Get the in edges for the node with the given dependency ID. In the context of DI, the edges
         represent the dependencies that depend on the requested dependency.
@@ -288,7 +289,7 @@ class DiGraph:
 
         self._adjacency[from_].discard(to_)
 
-    def children(self, of: str, /) -> Set[str]:
+    def children(self, of: str, /) -> set[str]:
         """
         Get the set of all children for the given node. Includes indirect children where a node depends on a
         node that depends on the requested node (etc.).

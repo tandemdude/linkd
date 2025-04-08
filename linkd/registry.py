@@ -32,7 +32,6 @@ if t.TYPE_CHECKING:
     from collections.abc import Callable
 
     from linkd import container
-    from linkd import types
 
 T = t.TypeVar("T")
 
@@ -83,7 +82,7 @@ class Registry:
         typ: type[T],
         value: T,
         *,
-        teardown: Callable[[T], types.MaybeAwaitable[None]] | None = None,
+        teardown: Callable[[T], utils.MaybeAwaitable[None]] | None = None,
     ) -> None:
         """
         Registers a pre-existing value as a dependency.
@@ -105,9 +104,9 @@ class Registry:
     def register_factory(
         self,
         typ: type[T],
-        factory: Callable[..., types.MaybeAwaitable[T]],
+        factory: Callable[..., utils.MaybeAwaitable[T]],
         *,
-        teardown: Callable[[T], types.MaybeAwaitable[None]] | None = None,
+        teardown: Callable[[T], utils.MaybeAwaitable[None]] | None = None,
     ) -> None:
         """
         Registers a factory for creating a dependency.

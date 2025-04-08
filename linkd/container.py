@@ -30,7 +30,6 @@ from linkd import exceptions
 from linkd import graph
 from linkd import registry as registry_
 from linkd import utils
-from linkd import utils as di_utils
 from linkd.graph import DependencyData
 
 if t.TYPE_CHECKING:
@@ -38,7 +37,6 @@ if t.TYPE_CHECKING:
     from collections.abc import Callable
 
     from linkd import context
-    from linkd import types as ld_types
 
 T = t.TypeVar("T")
 
@@ -77,7 +75,7 @@ class Container:
 
     def __contains__(self, item: t.Any) -> bool:
         if not isinstance(item, str):
-            item = di_utils.get_dependency_id(item)
+            item = utils.get_dependency_id(item)
 
         if item in self._instances:
             return True
@@ -113,9 +111,9 @@ class Container:
     def add_factory(
         self,
         typ: type[T],
-        factory: Callable[..., ld_types.MaybeAwaitable[T]],
+        factory: Callable[..., utils.MaybeAwaitable[T]],
         *,
-        teardown: Callable[[T], ld_types.MaybeAwaitable[None]] | None = None,
+        teardown: Callable[[T], utils.MaybeAwaitable[None]] | None = None,
     ) -> None:
         """
         Adds the given factory as an ephemeral dependency to this container. This dependency is only accessible
@@ -132,7 +130,7 @@ class Container:
         See Also:
             :meth:`linkd.registry.Registry.register_factory` for factory and teardown function spec.
         """
-        dependency_id = di_utils.get_dependency_id(typ)
+        dependency_id = utils.get_dependency_id(typ)
 
         if dependency_id in self._graph:
             for edge in self._graph.out_edges(dependency_id):
@@ -145,7 +143,7 @@ class Container:
         typ: type[T],
         value: T,
         *,
-        teardown: Callable[[T], ld_types.MaybeAwaitable[None]] | None = None,
+        teardown: Callable[[T], utils.MaybeAwaitable[None]] | None = None,
     ) -> None:
         """
         Adds the given value as an ephemeral dependency to this container. This dependency is only accessible
@@ -162,7 +160,7 @@ class Container:
         See Also:
             :meth:`linkd.registry.Registry.register_value` for teardown function spec.
         """
-        dependency_id = di_utils.get_dependency_id(typ)
+        dependency_id = utils.get_dependency_id(typ)
         self._instances[dependency_id] = value
 
         if dependency_id in self._graph:
