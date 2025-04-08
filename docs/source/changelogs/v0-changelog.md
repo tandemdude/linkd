@@ -7,3 +7,7 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 ----
 
 <!-- next-changelog -->
+
+## v0.0.1 (2025-04-08)
+
+- Initial release. No changes to see here!
