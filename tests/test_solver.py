@@ -28,7 +28,7 @@ from linkd import solver
 from linkd.solver import CANNOT_INJECT
 from linkd.solver import _parse_injectable_params
 
-COMMAND_CONTEXT = linkd.register_context("linkd.contexts.command")
+COMMAND_CONTEXT = linkd.global_context_registry.register("linkd.contexts.command")
 
 
 class TestSignatureParsing:

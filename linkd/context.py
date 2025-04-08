@@ -20,7 +20,7 @@
 # SOFTWARE.
 from __future__ import annotations
 
-__all__ = ["Context", "ContextRegistry", "Contexts", "DefaultContainer", "global_context_registry", "register_context"]
+__all__ = ["Context", "ContextRegistry", "Contexts", "DefaultContainer", "global_context_registry"]
 
 import typing as t
 
@@ -57,8 +57,7 @@ class ContextRegistry:
         return None
 
 
-global_context_registry = ContextRegistry()
-register_context = global_context_registry.register
+global_context_registry: ContextRegistry = ContextRegistry()
 
 
 @t.final
@@ -67,5 +66,5 @@ class Contexts:
 
     __slots__ = ()
 
-    DEFAULT = register_context("linkd.contexts.default", DefaultContainer)
+    DEFAULT = global_context_registry.register("linkd.contexts.default", DefaultContainer)
     """The base DI context - ALL other contexts are built with this as the parent."""

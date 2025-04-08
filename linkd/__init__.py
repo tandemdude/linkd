@@ -50,7 +50,6 @@ __all__ = [
     "RegistryFrozenException",
     "Try",
     "global_context_registry",
-    "register_context",
     "with_di",
 ]
 
