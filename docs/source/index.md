@@ -14,7 +14,14 @@ ogp_description_length: 148
 
 ## Overview
 
-TODO
+Linkd is a powerful [dependency-injection](https://en.wikipedia.org/wiki/Dependency_injection) framework for
+asyncio-based Python applications.
+
+This library aims to provide an easy way for framework developers to provide dependency-injection functionality,
+while also being suitable for use with standalone applications with a little bit more work.
+
+For an example of `linkd` in action, have a look at [`hikari-lightbulb`](https://github.com/tandemdude/hikari-lightbulb) which
+uses it to provide all dependency injection functionality.
 
 ---
 
