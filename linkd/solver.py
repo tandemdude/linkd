@@ -20,7 +20,7 @@
 # SOFTWARE.
 from __future__ import annotations
 
-__all__ = ["DI_CONTAINER", "DI_ENABLED", "INJECTED", "AutoInjecting", "DependencyInjectionManager", "with_di"]
+__all__ = ["DI_CONTAINER", "DI_ENABLED", "INJECTED", "AutoInjecting", "DependencyInjectionManager", "inject"]
 
 import collections
 import contextlib
@@ -68,7 +68,7 @@ Example:
 
     .. code-block:: python
 
-        @linkd.with_di
+        @linkd.inject
         async def foo(bar: SomeClass = linkd.INJECTED) -> None:
             ...
 
@@ -274,7 +274,7 @@ class AutoInjecting:
     decorators that applies this to the target automatically.
 
     See Also:
-        :meth:`~with_di`
+        :meth:`~inject`
     """
 
     __slots__ = ("_func", "_kw_only_params", "_pos_or_kw_params", "_self")
@@ -345,10 +345,10 @@ class AutoInjecting:
 
 
 @t.overload
-def with_di(func: AsyncFnT) -> AsyncFnT: ...
+def inject(func: AsyncFnT) -> AsyncFnT: ...
 @t.overload
-def with_di(func: Callable[P, R]) -> Callable[P, Coroutine[t.Any, t.Any, R]]: ...
-def with_di(func: Callable[P, types.MaybeAwaitable[R]]) -> Callable[P, Coroutine[t.Any, t.Any, R]]:
+def inject(func: Callable[P, R]) -> Callable[P, Coroutine[t.Any, t.Any, R]]: ...
+def inject(func: Callable[P, types.MaybeAwaitable[R]]) -> Callable[P, Coroutine[t.Any, t.Any, R]]:
     """
     Decorator that enables dependency injection on the decorated function. If dependency injection
     has been disabled globally then this function does nothing and simply returns the object that was passed in.

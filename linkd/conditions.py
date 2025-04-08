@@ -101,14 +101,14 @@ class If(BaseCondition):
 
         .. code-block:: python
 
-            @linkd.with_di
+            @linkd.inject
             async def foo(bar: If[Bar] | None) -> None:
                 # The 'bar' parameter will be 'None' if the 'Bar' dependency
                 # is unregistered.
                 ...
 
             # linkd treats the lack of meta annotation as meaning the same as 'If[dep]'
-            @linkd.with_di
+            @linkd.inject
             async def foo(bar: Bar | None) -> None:
                 # Same as previous example
                 ...
@@ -131,7 +131,7 @@ class Try(BaseCondition):
 
         .. code-block:: python
 
-            @linkd.with_di
+            @linkd.inject
             async def foo(bar: Try[Bar] | None) -> None:
                 # The 'bar' parameter will be 'None' if creating the 'Bar' dependency
                 # failed, or is unregistered.

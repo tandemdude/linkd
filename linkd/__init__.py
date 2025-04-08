@@ -51,7 +51,7 @@ __all__ = [
     "RegistryFrozenException",
     "Try",
     "global_context_registry",
-    "with_di",
+    "inject",
 ]
 
 # Do not change the below field manually. It is updated by CI upon release.

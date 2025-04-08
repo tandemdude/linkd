@@ -85,7 +85,7 @@ class TestMethodInjection:
         value = object()
         manager.registry_for(linkd.Contexts.DEFAULT).register_value(object, value)
 
-        @linkd.with_di
+        @linkd.inject
         def m(obj: object = linkd.INJECTED) -> None:
             assert obj is value
 
@@ -99,7 +99,7 @@ class TestMethodInjection:
         value = object()
         manager.registry_for(linkd.Contexts.DEFAULT).register_value(object, value)
 
-        @linkd.with_di
+        @linkd.inject
         def m(obj: object = linkd.INJECTED) -> None:
             assert obj is value
 
@@ -113,7 +113,7 @@ class TestMethodInjection:
         value = object()
         manager.registry_for(linkd.Contexts.DEFAULT).register_value(object, value)
 
-        @linkd.with_di
+        @linkd.inject
         async def m(obj: object = linkd.INJECTED) -> None:
             assert obj is value
 
@@ -129,7 +129,7 @@ class TestMethodInjection:
         value = object()
         manager.registry_for(linkd.Contexts.DEFAULT).register_value(Foo, value)
 
-        @linkd.with_di
+        @linkd.inject
         async def m(obj: Foo = linkd.INJECTED) -> None:
             assert obj is value
 
@@ -143,7 +143,7 @@ class TestMethodInjection:
         value = object()
         manager.registry_for(linkd.Contexts.DEFAULT).register_value(object, value)
 
-        @linkd.with_di
+        @linkd.inject
         async def m(*, obj: object = linkd.INJECTED) -> None:
             assert obj is value
 
@@ -157,7 +157,7 @@ class TestMethodInjection:
         value = object()
         manager.registry_for(linkd.Contexts.DEFAULT).register_value(object, value)
 
-        @linkd.with_di
+        @linkd.inject
         async def m(obj: object = linkd.INJECTED) -> None:
             assert obj is not value
 
@@ -171,7 +171,7 @@ class TestMethodInjection:
         value = object()
         manager.registry_for(linkd.Contexts.DEFAULT).register_value(object, value)
 
-        @linkd.with_di
+        @linkd.inject
         async def m(obj: object = linkd.INJECTED) -> None:
             assert obj is not value
 
@@ -185,7 +185,7 @@ class TestMethodInjection:
         instance: t.Optional["AClass"] = None
 
         class AClass:
-            @linkd.with_di
+            @linkd.inject
             async def bound_method(self) -> None:
                 assert self is instance
 
@@ -202,7 +202,7 @@ class TestMethodInjection:
         manager.registry_for(linkd.Contexts.DEFAULT).register_value(object, value)
 
         class AClass:
-            @linkd.with_di
+            @linkd.inject
             async def bound_method(self, obj: object = linkd.INJECTED) -> None:
                 assert obj is value
 
@@ -220,7 +220,7 @@ class TestMethodInjection:
         manager.registry_for(linkd.Contexts.DEFAULT).register_value(Value, value)
 
         class AClass:
-            @linkd.with_di
+            @linkd.inject
             async def bound_method(self, obj: object, val: Value = linkd.INJECTED) -> None:
                 assert obj is obj_
                 assert val is value
@@ -237,7 +237,7 @@ class TestMethodInjection:
         value = object()
         manager.registry_for(linkd.Contexts.DEFAULT).register_value(object, value)
 
-        @linkd.with_di
+        @linkd.inject
         def m(foo, obj: object = linkd.INJECTED) -> None:  # type: ignore[reportUnknownParameterType]
             assert obj is value
 
@@ -337,25 +337,25 @@ class TestDependencyInjectionManager:
 
 class TestAutoInjecting:
     def test_setattr_passes_through_to_wrapped_function(self) -> None:
-        wrapped = linkd.with_di(func := lambda: "foo")
+        wrapped = linkd.inject(func := lambda: "foo")
         setattr(wrapped, "__lb_test__", "bar")
         assert getattr(func, "__lb_test__") == "bar"
 
     def test_getattr_passes_through_to_wrapped_function(self) -> None:
-        wrapped = linkd.with_di(func := lambda: "foo")
+        wrapped = linkd.inject(func := lambda: "foo")
         setattr(func, "__lb_test__", "bar")
         assert getattr(wrapped, "__lb_test__") == "bar"
 
     def test__get__does_not_bind_when_called_on_class(self) -> None:
         class Foo:
-            @linkd.with_di
+            @linkd.inject
             def bar(self) -> None: ...
 
         assert Foo.bar._self is None  # type: ignore[reportFunctionMemberAccess]
 
     def test__get__binds_when_called_on_instance(self) -> None:
         class Foo:
-            @linkd.with_di
+            @linkd.inject
             def bar(self) -> None: ...
 
         foo = Foo()
@@ -364,10 +364,10 @@ class TestAutoInjecting:
 
 class TestWithDiDecorator:
     def test_enables_di_if_di_globally_enabled(self) -> None:
-        wrapped = linkd.with_di(lambda: "foo")
+        wrapped = linkd.inject(lambda: "foo")
         assert isinstance(wrapped, solver.AutoInjecting)
 
     def test_does_not_enable_di_if_di_globally_disabled(self) -> None:
         with mock.patch.object(solver, "DI_ENABLED", False):
-            wrapped = linkd.with_di(func := lambda: "foo")
+            wrapped = linkd.inject(func := lambda: "foo")
             assert wrapped is func
