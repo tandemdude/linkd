@@ -12,4 +12,7 @@ pip install linkd
 You must have Python 3.10 or higher in order to use linkd.
 :::
 
-TODO
+:::{literalinclude} ../code/quickstart/basic_example.py
+:language: python
+:linenos:
+:::
