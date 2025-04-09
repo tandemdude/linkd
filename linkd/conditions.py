@@ -91,7 +91,7 @@ class BaseCondition(abc.ABC):
     async def _get_from(self, container: container_.Container) -> tuple[bool, t.Any]: ...
 
 
-class If(BaseCondition):
+class _If(BaseCondition):
     """
     Dependency injection condition that will only fall back when the requested
     dependency is not known to the current container. This is the default when
@@ -122,7 +122,7 @@ class If(BaseCondition):
         return False, None
 
 
-class Try(BaseCondition):
+class _Try(BaseCondition):
     """
     Dependency injection condition that will fall back when the requested dependency
     is either unknown to the current container, or creation raises an exception.
@@ -218,7 +218,7 @@ class DependencyExpression(t.Generic[T]):
 
             if not isinstance(arg, BaseCondition):
                 # a concrete type T implicitly means If[T]
-                arg = If(arg)
+                arg = _If(arg)
 
             requested_dependencies.append(arg)
 
@@ -226,5 +226,8 @@ class DependencyExpression(t.Generic[T]):
 
 
 if t.TYPE_CHECKING:
-    If = t.Annotated[T, None]  # type: ignore[reportAssignmentType]
-    Try = t.Annotated[T, None]  # type: ignore[reportAssignmentType]
+    If = t.Annotated[T, None]
+    Try = t.Annotated[T, None]
+else:
+    If = _If
+    Try = _Try
