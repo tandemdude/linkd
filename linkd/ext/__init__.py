@@ -18,43 +18,13 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""A powerful async-only dependency injection framework for Python."""
+"""
+Extension modules for linkd to make it easier to integrate DI functionality with existing frameworks.
 
-from linkd import ext
-from linkd.conditions import *
-from linkd.container import *
-from linkd.context import *
-from linkd.exceptions import *
-from linkd.graph import *
-from linkd.registry import *
-from linkd.solver import *
+If your framework is not listed here, and you would like to see it supported - please open an
+issue on the GitHub repository.
+"""
 
-__all__ = [
-    "DI_CONTAINER",
-    "DI_ENABLED",
-    "INJECTED",
-    "AutoInjecting",
-    "CircularDependencyException",
-    "Container",
-    "ContainerClosedException",
-    "Context",
-    "ContextRegistry",
-    "Contexts",
-    "DefaultContainer",
-    "DependencyData",
-    "DependencyExpression",
-    "DependencyInjectionException",
-    "DependencyInjectionManager",
-    "DependencyNotSatisfiableException",
-    "DiGraph",
-    "If",
-    "Registry",
-    "RegistryFrozenException",
-    "Try",
-    "ext",
-    "global_context_registry",
-    "inject",
-]
+from linkd.ext import fastapi
 
-# Do not change the below field manually. It is updated by CI upon release.
-__version__ = "0.0.2"
+__all__ = ["fastapi"]

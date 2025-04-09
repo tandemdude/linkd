@@ -165,7 +165,7 @@ class Package:
             for member in sorted(getattr(root_module, "__all__", [])):
                 item = getattr(root_module, member)
                 if inspect.ismodule(item):
-                    root_members.append(f"- :doc:`{member} <api-references/{'/'.join(item.__name__.split('.'))}>`")
+                    root_members.append(f"- :doc:`{member} </api-references/{'/'.join(item.__name__.split('.'))}>`")
                 elif inspect.isclass(item):
                     root_members.append(f"- :class:`~{item.__module__}.{member}`")
                 elif inspect.isfunction(item):

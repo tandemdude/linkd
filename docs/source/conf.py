@@ -62,9 +62,7 @@ templates_path = ["_templates"]
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
-intersphinx_mapping = {
-    "python": ("https://docs.python.org/3", None)
-}
+intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -92,3 +90,11 @@ modindex_common_prefix = ["linkd."]
 python_use_unqualified_type_names = True
 python_display_short_literal_types = True
 # python_maximum_signature_line_length = 1
+
+
+def setup(_) -> None:
+    # force sphinx to document 'Try' and 'If' instead of using 'Alias of ...'
+    import linkd
+
+    linkd.Try.__name__ = "Try"
+    linkd.If.__name__ = "If"

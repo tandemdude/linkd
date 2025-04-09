@@ -27,12 +27,12 @@ import nox
 from nox import options
 
 SCRIPT_PATHS = [
-    # os.path.join(".", "examples"),
+    os.path.join(".", "examples"),
     os.path.join(".", "linkd"),
-    # os.path.join(".", "scripts"),
+    os.path.join(".", "scripts"),
     os.path.join(".", "tests"),
     "noxfile.py",
-    # "docs/source/conf.py",
+    "docs/source/conf.py",
 ]
 
 options.sessions = ["format_fix", "typecheck", "slotscheck", "test"]
