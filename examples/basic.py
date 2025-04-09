@@ -1,3 +1,8 @@
+# /// script
+# dependencies = [
+#   "linkd==0.0.3",
+# ]
+# ///
 import asyncio
 
 import linkd
