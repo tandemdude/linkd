@@ -1,3 +1,4 @@
+# api_ref_gen::ignore
 # -*- coding: utf-8 -*-
 # Copyright (c) 2025-present tandemdude
 #
@@ -18,14 +19,19 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""
-Extension modules for linkd to make it easier to integrate DI functionality with existing frameworks.
+from __future__ import annotations
 
-If your framework is not listed here, and you would like to see it supported - please open an
-issue on the GitHub repository.
-"""
+__all__ = ["REQUEST_CONTEXT", "InjectedCallableT", "RequestContainer"]
 
-from linkd.ext import fastapi
-from linkd.ext import starlette
+import typing as t
+from collections.abc import Callable
 
-__all__ = ["fastapi", "starlette"]
+from linkd import container
+from linkd import context
+
+InjectedCallableT = t.TypeVar("InjectedCallableT", bound=Callable[..., t.Any])
+
+RequestContainer = t.NewType("RequestContainer", container.Container)
+"""Injectable type representing the dependency container for the HTTP request context."""
+
+REQUEST_CONTEXT = context.global_context_registry.register("linkd.contexts.http.request", RequestContainer)

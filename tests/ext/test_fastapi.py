@@ -18,14 +18,3 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""
-Extension modules for linkd to make it easier to integrate DI functionality with existing frameworks.
-
-If your framework is not listed here, and you would like to see it supported - please open an
-issue on the GitHub repository.
-"""
-
-from linkd.ext import fastapi
-from linkd.ext import starlette
-
-__all__ = ["fastapi", "starlette"]

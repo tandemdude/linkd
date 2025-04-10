@@ -19,7 +19,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """
-Extension module adding support for using linkd-based dependency injection to FastAPI.
+Extension module adding support for using linkd-based dependency injection to `FastAPI <https://fastapi.tiangolo.com/>`_.
 
 See the examples directory for a full working application using this module.
 
@@ -28,26 +28,24 @@ See the examples directory for a full working application using this module.
 
 from __future__ import annotations
 
-__all__ = ["Contexts", "inject", "use_di_context_middleware"]
+__all__ = ["Contexts", "RequestContainer", "inject", "use_di_context_middleware"]
 
 import inspect
 import logging
 import typing as t
-from collections.abc import Callable
 
-from linkd import container
 from linkd import context
 from linkd import solver
+from linkd.ext._common import REQUEST_CONTEXT
+from linkd.ext._common import InjectedCallableT
+from linkd.ext._common import RequestContainer
 
 if t.TYPE_CHECKING:
+    from collections.abc import Callable
+
     import fastapi
 
-InjectedCallableT = t.TypeVar("InjectedCallableT", bound=Callable[..., t.Any])
-
 LOGGER = logging.getLogger(__name__)
-
-RequestContainer = t.NewType("RequestContainer", container.Container)
-"""Injectable type representing the dependency container for the request context."""
 
 
 @t.final
@@ -58,7 +56,7 @@ class Contexts:
 
     DEFAULT = context.Contexts.DEFAULT
     """The base DI context - ALL other contexts are built with this as the parent."""
-    REQUEST = context.global_context_registry.register("linkd.contexts.fastapi.request", RequestContainer)
+    REQUEST = REQUEST_CONTEXT
     """DI context used during HTTP request handling."""
 
 
@@ -78,7 +76,6 @@ def use_di_context_middleware(app: fastapi.FastAPI, manager: solver.DependencyIn
         .. code-block:: python
 
             import fastapi
-            import linkd
 
             app = fastapi.FastAPI()
             linkd.ext.fastapi.use_di_context_middleware(app)
@@ -98,11 +95,7 @@ def inject(func: InjectedCallableT) -> InjectedCallableT:
     """
     Specialized decorator enabling linkd-managed dependency injection for fastapi request handlers.
 
-    Linkd-injected parameters MUST be keyword-only, as this decorator rewrites the function signature to
-    hide those parameters from fastapi, so that you can still use fastapi dependency injection on non-kw-only
-    parameters. See the example for more.
-
-    This parameter MUST be placed below the fastapi route decorator if it is being used.
+    This decorator MUST be placed below the fastapi route decorator if it is being used.
 
     Args:
         func: The function to enable DI for.
@@ -113,6 +106,11 @@ def inject(func: InjectedCallableT) -> InjectedCallableT:
     Warning:
         The standard :meth:`~linkd.solver.inject` decorator WILL NOT work for fastapi request handlers and
         this decorator MUST be used in its place.
+
+    Warning:
+        Linkd-injected parameters MUST be keyword-only, as this decorator rewrites the function signature to
+        hide those parameters from fastapi, so that you can still use fastapi dependency injection on non-kw-only
+        parameters. See the example for more.
 
     Example:
 
@@ -131,6 +129,7 @@ def inject(func: InjectedCallableT) -> InjectedCallableT:
                 foo: str
                 # custom fastapi dependencies using 'Depends' are also supported
                 bar: Annotated[dict, Depends(some_dependency)],
+                # '*' IS IMPORTANT - if excluded, fastapi will complain about the remaining parameters
                 *,
                 # this parameter will be ignored by fastapi, and injected by linkd instead
                 baz: SomeDependency,

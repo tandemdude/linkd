@@ -14,6 +14,9 @@ build:
   tools:
     python: "3.11"
   jobs:
+    install:
+      - pip install .
+      - pip install --group docs
     pre_build:
       - python ./scripts/docs/api_reference_generator.py
 
@@ -22,5 +25,3 @@ python:
   install:
     - method: pip
       path: .
-      extra_requirements:
-        - dev.docs
