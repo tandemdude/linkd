@@ -8,6 +8,13 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 
 <!-- next-changelog -->
 
+## v0.0.3 (2025-04-10)
+### Features
+
+- Add support for FastAPI applications through the `linkd.ext.fastapi` submodule. ([#1](https://github.com/tandemdude/linkd/issues/1))
+
+----
+
 ## v0.0.2 (2025-04-08)
 ### Breaking Changes
 
