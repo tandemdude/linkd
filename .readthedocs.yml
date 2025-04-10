@@ -15,9 +15,9 @@ build:
     python: "3.13"
   jobs:
     install:
-      - pip install -U pip
-      - pip install .
-      - pip install --group docs
+      - pip install uv
+      - uv pip install .
+      - uv pip install --group docs
     pre_build:
       - python ./scripts/docs/api_reference_generator.py
 
