@@ -22,7 +22,7 @@ jobs:
 
       - name: Run format checks
         run: |
-          pip install nox
+          pip install uv nox
           nox -s format_check
 
   type-check:
@@ -40,12 +40,12 @@ jobs:
 
       - name: Run pyright
         run: |
-          pip install nox
+          pip install uv nox
           nox -s typecheck
 
       - name: Verify type-completeness
         run: |
-          pip install ".[dev.typecheck]"
+          uv pip install --group typecheck
           pyright --verifytypes linkd --ignoreexternal
 
   slotscheck:
@@ -63,7 +63,7 @@ jobs:
 
       - name: Run slotscheck
         run: |
-          pip install nox
+          pip install uv nox
           nox -s slotscheck
 
   test:
@@ -85,7 +85,8 @@ jobs:
 
       - name: Run pytest
         run: |
-          pip install ".[localization,crontrigger,dev.test]"
+          pip install uv
+          uv pip install --group test
           pytest --cov linkd --cov-report=xml --junitxml=junit.xml tests
 
       - name: Upload coverage to CodeCov
