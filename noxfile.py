@@ -50,33 +50,34 @@ def nox_session(**kwargs: t.Any) -> Callable[[Callable[[nox.Session], None]], Ca
 
 @nox_session()
 def format_fix(session: nox.Session) -> None:
-    session.install("-U", ".[dev.format]")
+    session.install("--group", "format")
     session.run("python", "-m", "ruff", "format", *SCRIPT_PATHS)
     session.run("python", "-m", "ruff", "check", "--fix", *SCRIPT_PATHS)
 
 
 @nox_session()
 def format_check(session: nox.Session) -> None:
-    session.install("-U", ".[dev.format]")
+    session.install("--group", "format")
     session.run("python", "-m", "ruff", "format", *SCRIPT_PATHS, "--check")
     session.run("python", "-m", "ruff", "check", "--output-format", "github", *SCRIPT_PATHS)
 
 
 @nox_session()
 def typecheck(session: nox.Session) -> None:
-    session.install("-U", ".[dev.typecheck,dev.test]")
+    session.install("--group", "typecheck")
+    session.install("-U", ".[dev.typecheck,dev.test,dev.extensions]")
     session.run("python", "-m", "pyright")
 
 
 @nox_session()
 def slotscheck(session: nox.Session) -> None:
-    session.install("-U", ".[dev.slotscheck]")
+    session.install("--group", "slotscheck")
     session.run("python", "-m", "slotscheck", "-m", "linkd")
 
 
 @nox_session()
 def test(session: nox.Session) -> None:
-    session.install("-U", ".[dev.test]")
+    session.install("--group", "test")
 
     args = ["python", "-m", "pytest"]
     if session.posargs:
@@ -88,6 +89,6 @@ def test(session: nox.Session) -> None:
 
 @nox_session()
 def sphinx(session: nox.Session) -> None:
-    session.install("-U", ".[dev.docs]")
+    session.install("--group", "docs")
     session.run("python", "./scripts/docs/api_reference_generator.py")
     session.run("python", "-m", "sphinx.cmd.build", "docs/source", "docs/build", "-b", "html")
