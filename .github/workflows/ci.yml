@@ -41,7 +41,6 @@ jobs:
       - name: Setup Environment
         run: |
           pip install uv nox
-          uv pip install nox
 
       - name: Run pyright
         run: |
@@ -49,7 +48,7 @@ jobs:
 
       - name: Verify type-completeness
         run: |
-          uv pip install --group typecheck --system
+          uv pip install --system --group typecheck
           pyright --verifytypes linkd --ignoreexternal
 
   slotscheck:
@@ -90,7 +89,7 @@ jobs:
       - name: Setup Environment
         run: |
           pip install uv
-          uv pip install --group test --system
+          uv pip install --system --group test
 
       - name: Run pytest
         run: |
