@@ -89,7 +89,7 @@ try:
 
         def __init__(self, app: ASGIApp, manager: solver.DependencyInjectionManager) -> None:
             super().__init__(app)
-            self.manager = manager
+            self.manager: solver.DependencyInjectionManager = manager
 
         async def dispatch(self, request: Request, call_next: t.Callable[[Request], t.Awaitable[Response]]) -> Response:
             async with self.manager.enter_context(Contexts.DEFAULT), self.manager.enter_context(Contexts.REQUEST) as rc:
