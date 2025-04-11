@@ -49,6 +49,7 @@ jobs:
       - name: Verify type-completeness
         run: |
           uv pip install --system --group typecheck
+          uv pip install --system .
           pyright --verifytypes linkd --ignoreexternal
 
   slotscheck:
