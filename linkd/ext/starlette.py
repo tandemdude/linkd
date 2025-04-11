@@ -119,6 +119,10 @@ def inject(func: InjectedCallableT) -> InjectedCallableT:
     Returns:
         The function with dependency injection enabled.
 
+    Note:
+        ASGI route handlers are not supported when using this decorator, you should use the standard
+        :meth:`~linkd.solver.inject` decorator instead.
+
     Example:
 
         .. code-block:: python
