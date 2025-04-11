@@ -40,9 +40,7 @@ jobs:
 
       - name: Setup Environment
         run: |
-          pip install uv
-          uv venv
-          source .venv/bin/activate
+          pip install uv nox
           uv pip install nox
 
       - name: Run pyright
@@ -51,7 +49,7 @@ jobs:
 
       - name: Verify type-completeness
         run: |
-          uv pip install --group typecheck
+          uv pip install --group typecheck --system
           pyright --verifytypes linkd --ignoreexternal
 
   slotscheck:
@@ -92,9 +90,7 @@ jobs:
       - name: Setup Environment
         run: |
           pip install uv
-          uv venv
-          source .venv/bin/activate
-          uv pip install --group test
+          uv pip install --group test --system
 
       - name: Run pytest
         run: |
