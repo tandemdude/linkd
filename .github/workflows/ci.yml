@@ -42,6 +42,7 @@ jobs:
         run: |
           pip install uv
           uv venv
+          source .venv/bin/activate
           uv pip install nox
 
       - name: Run pyright
@@ -92,6 +93,7 @@ jobs:
         run: |
           pip install uv
           uv venv
+          source .venv/bin/activate
           uv pip install --group test
 
       - name: Run pytest
