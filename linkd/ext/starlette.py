@@ -61,7 +61,29 @@ try:
     from starlette.requests import Request
 
     class DiContextMiddleware(BaseHTTPMiddleware):
-        """FOO."""
+        """
+        Middleware class which handles setting up a DI context for each HTTP request.
+
+        Args:
+            app: The app this middleware will be applied to.
+            manager: The dependency injection manager to use when entering the DI context.
+
+        Example:
+
+            .. code-block:: python
+
+                from starlette.applications import Starlette
+                from starlette.middleware import Middleware
+                import linkd
+
+                manager = linkd.DependencyInjectionManager()
+
+                middleware = [
+                    Middleware(linkd.ext.starlette.DiContextMiddleware, manager=manager),
+                ]
+
+                app = Starlette(routes=..., lifetime=..., middleware=middleware)
+        """
 
         __slots__ = ("app", "manager")
 
@@ -84,6 +106,47 @@ except ImportError:
 
 
 def inject(func: InjectedCallableT) -> InjectedCallableT:
+    """
+    Specialised decorator enabling linkd dependency injection for starlette route handlers. This
+    decorator must be used instead of the standard :meth:`~linkd.solver.inject` decorator so that
+    starlette does not treat injection-enabled functions as ASGI apps instead of request/response functions.
+
+    If you are enabling DI for any function other than a route handler then the standard decorator will still work.
+
+    Args:
+        func: The function to enable DI for.
+
+    Returns:
+        The function with dependency injection enabled.
+
+    Example:
+
+        .. code-block:: python
+
+            from starlette.applications import Starlette
+            from starlette.middleware import Middleware
+            from starlette.requests import Request
+            from starlette.responses import Response
+            from starlette.routing import Route
+
+            import linkd
+
+            @linkd.ext.starlette.inject
+            async def some_handler(request: Request, dependency: SomeDependency) -> Response:
+                ...
+
+            routes = [
+                Route("/foo", some_handler),
+            ]
+
+            manager = linkd.DependencyInjectionManager()
+
+            middleware = [
+                Middleware(linkd.ext.starlette.DiContextMiddleware, manager=manager),
+            ]
+
+            app = Starlette(routes=routes, lifetime=..., middleware=middleware)
+    """
     func = solver.inject(func)
 
     async def wrapper(*args: t.Any, **kwargs: t.Any) -> t.Any:

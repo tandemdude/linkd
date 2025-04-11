@@ -76,9 +76,12 @@ def use_di_context_middleware(app: fastapi.FastAPI, manager: solver.DependencyIn
         .. code-block:: python
 
             import fastapi
+            import linkd
+
+            manager = linkd.DependencyInjectionManager()
 
             app = fastapi.FastAPI()
-            linkd.ext.fastapi.use_di_context_middleware(app)
+            linkd.ext.fastapi.use_di_context_middleware(app, manager)
     """
     import fastapi
 
@@ -93,7 +96,7 @@ def use_di_context_middleware(app: fastapi.FastAPI, manager: solver.DependencyIn
 
 def inject(func: InjectedCallableT) -> InjectedCallableT:
     """
-    Specialized decorator enabling linkd-managed dependency injection for fastapi request handlers.
+    Specialised decorator enabling linkd-managed dependency injection for fastapi request handlers.
 
     This decorator MUST be placed below the fastapi route decorator if it is being used.
 
@@ -119,8 +122,10 @@ def inject(func: InjectedCallableT) -> InjectedCallableT:
             import fastapi
             import linkd
 
+            manager = linkd.DependencyInjectionManager()
+
             app = fastapi.FastAPI()
-            linkd.ext.fastapi.use_di_context_middleware(app)
+            linkd.ext.fastapi.use_di_context_middleware(app, manager)
 
             @app.get(...)
             @linkd.ext.fastapi.inject

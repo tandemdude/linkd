@@ -41,7 +41,7 @@ extensions = [
 ]
 
 dev = ["nox==2025.2.9"]
-format = ["ruff==0.11.4"]
+format = ["ruff==0.11.5"]
 test = [
     "pytest>=8.3.2, <9",
     "pytest-asyncio>=0.23.8, <0.27",
@@ -65,7 +65,11 @@ docs = [
     "sphinxcontrib-mermaid>=0.9.2, <2",
     {include-group = "extensions"}
 ]
-typecheck = ["pyright==1.1.398", {include-group = "extensions"}, {include-group = "test"}]
+typecheck = [
+    "pyright==1.1.399",
+    {include-group = "extensions"},
+    {include-group = "test"}
+]
 
 [tool.flit.module]
 name = "linkd"
