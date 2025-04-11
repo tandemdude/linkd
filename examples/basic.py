@@ -19,7 +19,7 @@ class Greeter:
 
 
 manager = linkd.DependencyInjectionManager()
-manager.registry_for(linkd.Contexts.DEFAULT).register_factory(Greeter, lambda: Greeter("linkd-testing"))
+manager.registry_for(linkd.Contexts.ROOT).register_factory(Greeter, lambda: Greeter("linkd-testing"))
 
 
 @linkd.inject
@@ -28,7 +28,7 @@ def print_greeting(greeter: Greeter = linkd.INJECTED) -> None:
 
 
 async def main() -> None:
-    async with manager.enter_context(linkd.Contexts.DEFAULT):
+    async with manager.enter_context(linkd.Contexts.ROOT):
         await print_greeting()
 
 

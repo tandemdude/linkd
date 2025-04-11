@@ -20,7 +20,7 @@
 # SOFTWARE.
 from __future__ import annotations
 
-__all__ = ["Context", "ContextRegistry", "Contexts", "DefaultContainer", "global_context_registry"]
+__all__ = ["Context", "ContextRegistry", "Contexts", "RootContainer", "global_context_registry"]
 
 import typing as t
 
@@ -33,8 +33,8 @@ can be accessed using method injection if required. You can create and use your 
 creating an instance of this type.
 """
 
-DefaultContainer = t.NewType("DefaultContainer", container.Container)
-"""Injectable type representing the dependency container for the default context."""
+RootContainer = t.NewType("RootContainer", container.Container)
+"""Injectable type representing the dependency container for the root context."""
 
 
 class ContextRegistry:
@@ -122,5 +122,5 @@ class Contexts:
 
     __slots__ = ()
 
-    DEFAULT = global_context_registry.register("linkd.contexts.default", DefaultContainer)
-    """The base DI context - ALL other contexts are built with this as the parent."""
+    ROOT = global_context_registry.register("linkd.contexts.default", RootContainer)
+    """The root DI context - ALL other contexts are built with this as the parent."""

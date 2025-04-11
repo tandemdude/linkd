@@ -28,16 +28,16 @@ See the examples directory for a full working application using this module.
 
 from __future__ import annotations
 
-__all__ = ["Contexts", "RequestContainer", "inject", "use_di_context_middleware"]
+__all__ = ["Contexts", "RequestContainer", "RootContainer", "inject", "use_di_context_middleware"]
 
 import inspect
 import logging
 import typing as t
 
-from linkd import context
-from linkd import solver
-from linkd.ext._common import REQUEST_CONTEXT
-from linkd.ext._common import InjectedCallableT
+from linkd import context as _context
+from linkd import solver as _solver
+from linkd.context import RootContainer
+from linkd.ext import _common
 from linkd.ext._common import RequestContainer
 
 if t.TYPE_CHECKING:
@@ -54,13 +54,13 @@ class Contexts:
 
     __slots__ = ()
 
-    DEFAULT = context.Contexts.DEFAULT
-    """The base DI context - ALL other contexts are built with this as the parent."""
-    REQUEST = REQUEST_CONTEXT
+    ROOT = _context.Contexts.ROOT
+    """The root DI context - ALL other contexts are built with this as the parent."""
+    REQUEST = _common.REQUEST_CONTEXT
     """DI context used during HTTP request handling."""
 
 
-def use_di_context_middleware(app: fastapi.FastAPI, manager: solver.DependencyInjectionManager) -> None:
+def use_di_context_middleware(app: fastapi.FastAPI, manager: _solver.DependencyInjectionManager) -> None:
     """
     Adds middleware to the given fastapi application to handle setting up a DI context for each HTTP request.
 
@@ -89,12 +89,12 @@ def use_di_context_middleware(app: fastapi.FastAPI, manager: solver.DependencyIn
     async def di_context_middleware(  # type: ignore[reportUnusedFunction]
         request: fastapi.Request, call_next: Callable[..., t.Awaitable[fastapi.Response]]
     ) -> fastapi.Response:
-        async with manager.enter_context(Contexts.DEFAULT), manager.enter_context(Contexts.REQUEST) as rc:
+        async with manager.enter_context(Contexts.ROOT), manager.enter_context(Contexts.REQUEST) as rc:
             rc.add_value(fastapi.Request, request)
             return await call_next(request)
 
 
-def inject(func: InjectedCallableT) -> InjectedCallableT:
+def inject(func: _common.InjectedCallableT) -> _common.InjectedCallableT:
     """
     Specialised decorator enabling linkd-managed dependency injection for fastapi request handlers.
 
@@ -141,7 +141,7 @@ def inject(func: InjectedCallableT) -> InjectedCallableT:
             ) -> None:
                 ...
     """
-    func = solver.inject(func)
+    func = _solver.inject(func)
     sig = inspect.signature(func)
 
     new_params: list[inspect.Parameter] = []

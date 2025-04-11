@@ -28,14 +28,14 @@ See the examples directory for a full working application using this module.
 
 from __future__ import annotations
 
-__all__ = ["Contexts", "DiContextMiddleware", "RequestContainer", "inject"]
+__all__ = ["Contexts", "DiContextMiddleware", "RequestContainer", "RootContainer", "inject"]
 
 import typing as t
 
-from linkd import context
-from linkd import solver
-from linkd.ext._common import REQUEST_CONTEXT
-from linkd.ext._common import InjectedCallableT
+from linkd import context as _context
+from linkd import solver as _solver
+from linkd.context import RootContainer
+from linkd.ext import _common
 from linkd.ext._common import RequestContainer
 
 if t.TYPE_CHECKING:
@@ -50,9 +50,9 @@ class Contexts:
 
     __slots__ = ()
 
-    DEFAULT = context.Contexts.DEFAULT
-    """The base DI context - ALL other contexts are built with this as the parent."""
-    REQUEST = REQUEST_CONTEXT
+    ROOT = _context.Contexts.ROOT
+    """The root DI context - ALL other contexts are built with this as the parent."""
+    REQUEST = _common.REQUEST_CONTEXT
     """DI context used during HTTP request handling."""
 
 
@@ -87,12 +87,12 @@ try:
 
         __slots__ = ("app", "manager")
 
-        def __init__(self, app: ASGIApp, manager: solver.DependencyInjectionManager) -> None:
+        def __init__(self, app: ASGIApp, manager: _solver.DependencyInjectionManager) -> None:
             super().__init__(app)
-            self.manager: solver.DependencyInjectionManager = manager
+            self.manager: _solver.DependencyInjectionManager = manager
 
         async def dispatch(self, request: Request, call_next: t.Callable[[Request], t.Awaitable[Response]]) -> Response:
-            async with self.manager.enter_context(Contexts.DEFAULT), self.manager.enter_context(Contexts.REQUEST) as rc:
+            async with self.manager.enter_context(Contexts.ROOT), self.manager.enter_context(Contexts.REQUEST) as rc:
                 rc.add_value(Request, request)
                 return await call_next(request)
 except ImportError:
@@ -105,7 +105,7 @@ except ImportError:
                 raise RuntimeError("starlette is not installed - starlette middleware is not available")
 
 
-def inject(func: InjectedCallableT) -> InjectedCallableT:
+def inject(func: _common.InjectedCallableT) -> _common.InjectedCallableT:
     """
     Specialised decorator enabling linkd dependency injection for starlette route handlers. This
     decorator must be used instead of the standard :meth:`~linkd.solver.inject` decorator so that
@@ -151,7 +151,7 @@ def inject(func: InjectedCallableT) -> InjectedCallableT:
 
             app = Starlette(routes=routes, lifetime=..., middleware=middleware)
     """
-    func = solver.inject(func)
+    func = _solver.inject(func)
 
     async def wrapper(*args: t.Any, **kwargs: t.Any) -> t.Any:
         return await func(*args, **kwargs)

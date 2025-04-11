@@ -83,7 +83,7 @@ class TestMethodInjection:
         manager = linkd.DependencyInjectionManager()
 
         value = object()
-        manager.registry_for(linkd.Contexts.DEFAULT).register_value(object, value)
+        manager.registry_for(linkd.Contexts.ROOT).register_value(object, value)
 
         @linkd.inject
         def m(obj: object = linkd.INJECTED) -> None:
@@ -97,13 +97,13 @@ class TestMethodInjection:
         manager = linkd.DependencyInjectionManager()
 
         value = object()
-        manager.registry_for(linkd.Contexts.DEFAULT).register_value(object, value)
+        manager.registry_for(linkd.Contexts.ROOT).register_value(object, value)
 
         @linkd.inject
         def m(obj: object = linkd.INJECTED) -> None:
             assert obj is value
 
-        async with manager.enter_context(linkd.Contexts.DEFAULT):
+        async with manager.enter_context(linkd.Contexts.ROOT):
             await m()
 
     @pytest.mark.asyncio
@@ -111,13 +111,13 @@ class TestMethodInjection:
         manager = linkd.DependencyInjectionManager()
 
         value = object()
-        manager.registry_for(linkd.Contexts.DEFAULT).register_value(object, value)
+        manager.registry_for(linkd.Contexts.ROOT).register_value(object, value)
 
         @linkd.inject
         async def m(obj: object = linkd.INJECTED) -> None:
             assert obj is value
 
-        async with manager.enter_context(linkd.Contexts.DEFAULT):
+        async with manager.enter_context(linkd.Contexts.ROOT):
             await m()
 
     @pytest.mark.asyncio
@@ -127,13 +127,13 @@ class TestMethodInjection:
         manager = linkd.DependencyInjectionManager()
 
         value = object()
-        manager.registry_for(linkd.Contexts.DEFAULT).register_value(Foo, value)
+        manager.registry_for(linkd.Contexts.ROOT).register_value(Foo, value)
 
         @linkd.inject
         async def m(obj: Foo = linkd.INJECTED) -> None:
             assert obj is value
 
-        async with manager.enter_context(linkd.Contexts.DEFAULT):
+        async with manager.enter_context(linkd.Contexts.ROOT):
             await m()
 
     @pytest.mark.asyncio
@@ -141,13 +141,13 @@ class TestMethodInjection:
         manager = linkd.DependencyInjectionManager()
 
         value = object()
-        manager.registry_for(linkd.Contexts.DEFAULT).register_value(object, value)
+        manager.registry_for(linkd.Contexts.ROOT).register_value(object, value)
 
         @linkd.inject
         async def m(*, obj: object = linkd.INJECTED) -> None:
             assert obj is value
 
-        async with manager.enter_context(linkd.Contexts.DEFAULT):
+        async with manager.enter_context(linkd.Contexts.ROOT):
             await m()
 
     @pytest.mark.asyncio
@@ -155,13 +155,13 @@ class TestMethodInjection:
         manager = linkd.DependencyInjectionManager()
 
         value = object()
-        manager.registry_for(linkd.Contexts.DEFAULT).register_value(object, value)
+        manager.registry_for(linkd.Contexts.ROOT).register_value(object, value)
 
         @linkd.inject
         async def m(obj: object = linkd.INJECTED) -> None:
             assert obj is not value
 
-        async with manager.enter_context(linkd.Contexts.DEFAULT):
+        async with manager.enter_context(linkd.Contexts.ROOT):
             await m(object())
 
     @pytest.mark.asyncio
@@ -169,13 +169,13 @@ class TestMethodInjection:
         manager = linkd.DependencyInjectionManager()
 
         value = object()
-        manager.registry_for(linkd.Contexts.DEFAULT).register_value(object, value)
+        manager.registry_for(linkd.Contexts.ROOT).register_value(object, value)
 
         @linkd.inject
         async def m(obj: object = linkd.INJECTED) -> None:
             assert obj is not value
 
-        async with manager.enter_context(linkd.Contexts.DEFAULT):
+        async with manager.enter_context(linkd.Contexts.ROOT):
             await m(obj=object())
 
     @pytest.mark.asyncio
@@ -191,7 +191,7 @@ class TestMethodInjection:
 
         instance = AClass()
 
-        async with manager.enter_context(linkd.Contexts.DEFAULT):
+        async with manager.enter_context(linkd.Contexts.ROOT):
             await instance.bound_method()
 
     @pytest.mark.asyncio
@@ -199,7 +199,7 @@ class TestMethodInjection:
         manager = linkd.DependencyInjectionManager()
 
         value = object()
-        manager.registry_for(linkd.Contexts.DEFAULT).register_value(object, value)
+        manager.registry_for(linkd.Contexts.ROOT).register_value(object, value)
 
         class AClass:
             @linkd.inject
@@ -208,7 +208,7 @@ class TestMethodInjection:
 
         instance = AClass()
 
-        async with manager.enter_context(linkd.Contexts.DEFAULT):
+        async with manager.enter_context(linkd.Contexts.ROOT):
             await instance.bound_method()
 
     @pytest.mark.asyncio
@@ -217,7 +217,7 @@ class TestMethodInjection:
 
         Value = t.NewType("Value", object)
         value, obj_ = Value(object()), object()
-        manager.registry_for(linkd.Contexts.DEFAULT).register_value(Value, value)
+        manager.registry_for(linkd.Contexts.ROOT).register_value(Value, value)
 
         class AClass:
             @linkd.inject
@@ -227,7 +227,7 @@ class TestMethodInjection:
 
         instance = AClass()
 
-        async with manager.enter_context(linkd.Contexts.DEFAULT):
+        async with manager.enter_context(linkd.Contexts.ROOT):
             await instance.bound_method(obj_)
 
     @pytest.mark.asyncio
@@ -235,13 +235,13 @@ class TestMethodInjection:
         manager = linkd.DependencyInjectionManager()
 
         value = object()
-        manager.registry_for(linkd.Contexts.DEFAULT).register_value(object, value)
+        manager.registry_for(linkd.Contexts.ROOT).register_value(object, value)
 
         @linkd.inject
         def m(foo, obj: object = linkd.INJECTED) -> None:  # type: ignore[reportUnknownParameterType]
             assert obj is value
 
-        async with manager.enter_context(linkd.Contexts.DEFAULT):
+        async with manager.enter_context(linkd.Contexts.ROOT):
             await m("bar")
 
 
@@ -250,7 +250,7 @@ class TestDependencyInjectionManager:
     async def test_default_container_not_closed_once_default_context_exited(self) -> None:
         manager = linkd.DependencyInjectionManager()
 
-        async with manager.enter_context(linkd.Contexts.DEFAULT):
+        async with manager.enter_context(linkd.Contexts.ROOT):
             pass
 
         assert manager.default_container is not None
@@ -261,7 +261,7 @@ class TestDependencyInjectionManager:
         manager = linkd.DependencyInjectionManager()
 
         async with (
-            manager.enter_context(linkd.Contexts.DEFAULT),
+            manager.enter_context(linkd.Contexts.ROOT),
             manager.enter_context(COMMAND_CONTEXT),
         ):
             pass
@@ -274,7 +274,7 @@ class TestDependencyInjectionManager:
         manager = linkd.DependencyInjectionManager()
 
         async with (
-            manager.enter_context(linkd.Contexts.DEFAULT),
+            manager.enter_context(linkd.Contexts.ROOT),
             manager.enter_context(COMMAND_CONTEXT),
         ):
             pass
@@ -291,7 +291,7 @@ class TestDependencyInjectionManager:
         manager = linkd.DependencyInjectionManager()
 
         async with (
-            manager.enter_context(linkd.Contexts.DEFAULT),
+            manager.enter_context(linkd.Contexts.ROOT),
             manager.enter_context(COMMAND_CONTEXT) as c1,
             manager.enter_context(COMMAND_CONTEXT) as c2,
         ):
@@ -302,9 +302,9 @@ class TestDependencyInjectionManager:
         manager = linkd.DependencyInjectionManager()
 
         async with (
-            manager.enter_context(linkd.Contexts.DEFAULT) as c1,
+            manager.enter_context(linkd.Contexts.ROOT) as c1,
             manager.enter_context(COMMAND_CONTEXT),
-            manager.enter_context(linkd.Contexts.DEFAULT) as c2,
+            manager.enter_context(linkd.Contexts.ROOT) as c2,
         ):
             assert c1 is c2
 
@@ -312,16 +312,16 @@ class TestDependencyInjectionManager:
     async def test_entering_default_context_always_returns_same_container(self) -> None:
         manager = linkd.DependencyInjectionManager()
 
-        async with manager.enter_context(linkd.Contexts.DEFAULT) as c1:
+        async with manager.enter_context(linkd.Contexts.ROOT) as c1:
             pass
-        async with manager.enter_context(linkd.Contexts.DEFAULT) as c2:
+        async with manager.enter_context(linkd.Contexts.ROOT) as c2:
             assert c1 is c2
 
     @pytest.mark.asyncio
     async def test_enter_context_yields_noop_container_when_di_globally_disabled(self) -> None:
         with mock.patch.object(solver, "DI_ENABLED", False):
             manager = linkd.DependencyInjectionManager()
-            async with manager.enter_context(linkd.Contexts.DEFAULT) as c1:
+            async with manager.enter_context(linkd.Contexts.ROOT) as c1:
                 assert c1 is solver._NOOP_CONTAINER
 
     @pytest.mark.asyncio

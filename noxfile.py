@@ -65,7 +65,6 @@ def format_check(session: nox.Session) -> None:
 @nox_session()
 def typecheck(session: nox.Session) -> None:
     session.install("--group", "typecheck")
-    session.install("-U", ".[dev.typecheck,dev.test,dev.extensions]")
     session.run("python", "-m", "pyright")
 
 

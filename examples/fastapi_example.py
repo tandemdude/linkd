@@ -43,7 +43,7 @@ async def user_factory(req: fastapi.Request, redis: redis_.Redis) -> User:
 
 
 manager = linkd.DependencyInjectionManager()
-manager.registry_for(linkd.ext.fastapi.Contexts.DEFAULT).register_value(
+manager.registry_for(linkd.ext.fastapi.Contexts.ROOT).register_value(
     redis_.Redis,
     redis_.Redis.from_url("redis://localhost:6379"),  # type: ignore[reportUnknownMemberType]
     teardown=lambda r: r.aclose(),

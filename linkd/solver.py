@@ -25,6 +25,7 @@ __all__ = ["DI_CONTAINER", "DI_ENABLED", "INJECTED", "AutoInjecting", "Dependenc
 import collections
 import contextlib
 import contextvars
+import functools
 import inspect
 import logging
 import os
@@ -98,7 +99,7 @@ class _NoOpContainer(container.Container):
         raise exceptions.DependencyNotSatisfiableException("dependency injection is globally disabled")
 
 
-_NOOP_CONTAINER = _NoOpContainer(registry.Registry(), tag=context_.Contexts.DEFAULT)
+_NOOP_CONTAINER = _NoOpContainer(registry.Registry(), tag=context_.Contexts.ROOT)
 
 
 class DependencyInjectionManager:
@@ -113,7 +114,7 @@ class DependencyInjectionManager:
     @property
     def default_container(self) -> container.Container | None:
         """
-        The container being used to provide dependencies for the :attr:`~Contexts.DEFAULT` context. This will
+        The container being used to provide dependencies for the :attr:`~Contexts.ROOT` context. This will
         be :obj:`None` until the first time any injection context is entered.
         """
         return self._default_container
@@ -132,7 +133,7 @@ class DependencyInjectionManager:
 
     @contextlib.asynccontextmanager
     async def enter_context(
-        self, context: context_.Context = context_.Contexts.DEFAULT, /
+        self, context: context_.Context = context_.Contexts.ROOT, /
     ) -> AsyncIterator[container.Container]:
         """
         Context manager that ensures a dependency injection context is available for the nested operations.
@@ -149,7 +150,7 @@ class DependencyInjectionManager:
             .. code-block:: python
 
                 # Enter a specific context ('manager' is your DependencyInjectionManager instance)
-                async with manager.enter_context(linkd.Contexts.DEFAULT):
+                async with manager.enter_context(linkd.Contexts.ROOT):
                     await some_function_that_needs_dependencies()
 
         Note:
@@ -159,7 +160,7 @@ class DependencyInjectionManager:
             .. code-block:: python
 
                 async with (
-                    manager.enter_context(linkd.Contexts.DEFAULT),
+                    manager.enter_context(linkd.Contexts.ROOT),
                     manager.enter_context(SOME_COMMAND_CONTEXT)
                 ):
                     ...
@@ -189,7 +190,7 @@ class DependencyInjectionManager:
                 this = this._parent
 
         if new_container is None:
-            if context == context_.Contexts.DEFAULT and self._default_container is not None:
+            if context == context_.Contexts.ROOT and self._default_container is not None:
                 LOGGER.debug("reusing existing container for context %r", context)
                 new_container = self._default_container
             else:
@@ -199,7 +200,7 @@ class DependencyInjectionManager:
                 if (cls := context_.global_context_registry.type_for(context)) is not None:
                     new_container.add_value(cls, new_container)
 
-                if context == context_.Contexts.DEFAULT:
+                if context == context_.Contexts.ROOT:
                     new_container.add_value(DependencyInjectionManager, self)
                     self._default_container = new_container
 
@@ -217,6 +218,50 @@ class DependencyInjectionManager:
         finally:
             DI_CONTAINER.reset(token)
             LOGGER.debug("cleared context %r", context)
+
+    def contextual(self, context: context_.Context, /, *contexts: context_.Context) -> Callable[[AsyncFnT], AsyncFnT]:
+        """
+        Convenience decorator that enters the given DI context(s) for the decorated function. The requested contexts
+        will be entered **IN ORDER**, and so in most cases the first one should be :obj:`~linkd.context.Contexts.ROOT`.
+
+        Args:
+            context: The first context to enter.
+            *contexts: Additional contexts to enter.
+
+        Note:
+            If a context would already be available and this decorator is used, the contexts will be **reapplied**.
+            For example, if you are in a request handler with the `REQUEST` context enabled, and a function decorated
+            with this - `@manager.contextual(Contexts.ROOT, Contexts.REQUEST)` - is called, the `REQUEST` context
+            will be re-entered and will not have access to any of the dependencies already instantiated in the
+            previous instance of the context.
+
+        Example:
+
+            .. code-block:: python
+
+                manager = linkd.DependencyInjectionManager()
+
+                ...
+
+                @manager.contextual(Contexts.ROOT, Contexts.REQUEST)
+                @linkd.injected
+                async def foo(bar: Bar) -> Baz:
+                    ...
+        """
+        resolved_contexts = [context, *contexts]
+
+        def inner(func: AsyncFnT) -> AsyncFnT:
+            @functools.wraps(func)
+            async def wrapper(*args: t.Any, **kwargs: t.Any) -> t.Any:
+                async with contextlib.AsyncExitStack() as stack:
+                    for ctx in resolved_contexts:
+                        await stack.enter_async_context(self.enter_context(ctx))
+
+                    return await func(*args, **kwargs)
+
+            return t.cast("AsyncFnT", wrapper)
+
+        return inner
 
     async def close(self) -> None:
         """
