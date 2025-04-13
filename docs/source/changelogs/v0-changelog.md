@@ -8,6 +8,19 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 
 <!-- next-changelog -->
 
+## v0.0.4 (2025-04-13)
+### Breaking Changes
+
+- Renamed `linkd.Contexts.DEFAULT` to `linkd.Contexts.ROOT` for clarity.
+
+### Features
+
+- Add support for Starlette applications through the `linkd.ext.starlette` submodule. ([#5](https://github.com/tandemdude/linkd/issues/5))
+- Add support for Quart applications through the `linkd.ext.quart` submodule. ([#6](https://github.com/tandemdude/linkd/issues/6))
+- Added convenience `DependencyInjectionManager.contextual` decorator to allow easily entering a DI context as a one-off.
+
+----
+
 ## v0.0.3 (2025-04-10)
 ### Features
 
