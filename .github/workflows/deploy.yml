@@ -48,7 +48,7 @@ jobs:
       - name: Generate Changelogs
         run: |
           uv pip install --group changelog
-          towncrier build --yes --version ${{ steps.update-version.outputs.VERSION }}
+          python -m towncrier build --yes --version ${{ steps.update-version.outputs.VERSION }}
           python scripts/deploy/populate_changelog.py CHANGES.md docs/source/changelogs/v0-changelog.md
 
       - name: Commit Changes
