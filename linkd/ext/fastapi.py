@@ -19,7 +19,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """
-Extension module adding support for using linkd-based dependency injection to `FastAPI <https://fastapi.tiangolo.com/>`_.
+Extension module adding support for using linkd-based dependency injection with `FastAPI <https://fastapi.tiangolo.com/>`_.
 
 See the examples directory for a full working application using this module.
 

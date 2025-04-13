@@ -26,6 +26,7 @@ issue on the GitHub repository.
 """
 
 from linkd.ext import fastapi
+from linkd.ext import quart
 from linkd.ext import starlette
 
-__all__ = ["fastapi", "starlette"]
+__all__ = ["fastapi", "quart", "starlette"]
