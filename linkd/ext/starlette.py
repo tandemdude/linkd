@@ -19,7 +19,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """
-Extension module adding support for using linkd-based dependency injection to `Starlette <https://www.starlette.io/>`_.
+Extension module adding support for using linkd-based dependency injection with `Starlette <https://www.starlette.io/>`_.
 
 See the examples directory for a full working application using this module.
 

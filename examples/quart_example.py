@@ -1,26 +1,19 @@
 # /// script
 # dependencies = [
 #   "linkd>=0.0.4",
-#   "starlette==0.46.1",
+#   "quart==0.20.0",
 #   "uvicorn==0.34.0",
 #   "redis==5.2.1",
 # ]
 # ///
-import contextlib
 import dataclasses
 import json
 import typing as t
 import uuid
 
+import quart
 import redis.asyncio as redis_
 import uvicorn
-from starlette.applications import Starlette
-from starlette.exceptions import HTTPException
-from starlette.middleware import Middleware
-from starlette.requests import Request
-from starlette.responses import JSONResponse
-from starlette.responses import Response
-from starlette.routing import Route
 
 import linkd
 from linkd import Try
@@ -44,8 +37,10 @@ class User:
         await self._redis.delete(f"user:{self.id}")
 
 
-async def user_factory(req: Request, redis: redis_.Redis) -> User:
-    user_data = await redis.get(f"user:{req.path_params.get('user_id')}")
+async def user_factory(redis: redis_.Redis) -> User:
+    user_id = quart.request.path.split("/")[-1]
+
+    user_data = await redis.get(f"user:{user_id}")
     if user_data is None:
         raise RuntimeError("user not found")
 
@@ -62,47 +57,48 @@ manager.registry_for(linkd.ext.starlette.Contexts.ROOT).register_value(
 )
 manager.registry_for(linkd.ext.starlette.Contexts.REQUEST).register_factory(User, user_factory)
 
+app = quart.Quart(__name__)
+app.asgi_app = linkd.ext.quart.DiContextMiddleware(app.asgi_app, manager)
 
-@contextlib.asynccontextmanager
-async def lifespan(_: Starlette) -> t.AsyncGenerator[None, t.Any]:
-    yield
+
+@app.after_serving
+async def shutdown() -> None:
     await manager.close()
 
 
-@linkd.ext.starlette.inject
-async def create_user(req: Request, redis: redis_.Redis) -> Response:
-    body = await req.json()
+@app.route("/users/", methods=["POST"])
+@linkd.inject
+async def create_user(redis: redis_.Redis) -> quart.Response:
+    body = await quart.request.json
 
     user = User(id=str(uuid.uuid4()), name=body["name"], email=body["email"])
     user._redis = redis
     await user.save()
 
-    return JSONResponse(user.as_dict())
+    return quart.jsonify(user.as_dict())
 
 
-@linkd.ext.starlette.inject
-async def get_or_delete_user(req: Request, user: Try[User] | None) -> Response:
+# Quart requires route handlers to take and URL parameters as keyword arguments, so unfortunately
+# the unused parameter needs to be included in the below route handlers.
+
+
+@app.route("/users/<user_id>", methods=["GET"])
+@linkd.inject
+async def get_user(user_id: str, user: Try[User] | None) -> quart.Response:  # noqa: RUF029
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        return quart.Response(status=404)
 
-    if req.method == "GET":
-        return JSONResponse(user.as_dict())
+    return quart.jsonify(user.as_dict())
+
+
+@app.route("/users/<user_id>", methods=["DELETE"])
+@linkd.inject
+async def delete_user(user_id: str, user: Try[User] | None) -> quart.Response:
+    if user is None:
+        return quart.Response(status=404)
 
     await user.delete()
-    return Response(status_code=204)
-
-
-routes = [
-    Route("/users/", create_user, methods=["POST"]),
-    Route("/users/{user_id}", get_or_delete_user, methods=["GET", "DELETE"]),
-]
-
-middleware = [
-    Middleware(linkd.ext.starlette.DiContextMiddleware, manager=manager),
-]
-
-app = Starlette(routes=routes, lifespan=lifespan, middleware=middleware)
-app.state.di = manager
+    return quart.Response(status=204)
 
 
 if __name__ == "__main__":
