@@ -37,7 +37,6 @@ jobs:
       - name: Setup Environment
         run: |
           pip install uv
-          uv venv
 
       - name: Update Version
         id: update-version
@@ -47,8 +46,8 @@ jobs:
 
       - name: Generate Changelogs
         run: |
-          uv pip install --group changelog
-          python -m towncrier build --yes --version ${{ steps.update-version.outputs.VERSION }}
+          uv pip install --system --group changelog
+          towncrier build --yes --version ${{ steps.update-version.outputs.VERSION }}
           python scripts/deploy/populate_changelog.py CHANGES.md docs/source/changelogs/v0-changelog.md
 
       - name: Commit Changes
@@ -62,7 +61,7 @@ jobs:
           FLIT_USERNAME: ${{ secrets.FLIT_USERNAME }}
           FLIT_PASSWORD: ${{ secrets.FLIT_PASSWORD }}
         run: |
-          uv pip install --group release
+          uv pip install --system --group release
           flit publish
 
       - name: Create Tag
