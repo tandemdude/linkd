@@ -20,9 +20,3 @@ build:
       - uv pip install --group docs
     pre_build:
       - python ./scripts/docs/api_reference_generator.py
-
-# Optionally set the version of Python and requirements required to build your docs
-python:
-  install:
-    - method: pip
-      path: .
