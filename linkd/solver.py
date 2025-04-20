@@ -353,7 +353,7 @@ class AutoInjecting:
         if key in self.__slots__:
             return super().__setattr__(key, value)
 
-        setattr(self._func, key, value)
+        return setattr(self._func, key, value)
 
     async def __call__(self, *args: t.Any, **kwargs: t.Any) -> t.Any:
         new_kwargs: dict[str, t.Any] = {}
