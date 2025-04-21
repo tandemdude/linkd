@@ -364,13 +364,12 @@ class AutoInjecting:
         if self._dependency_func is None:
             self._dependency_func = self._codegen_dependency_func()
 
-        current_container = DI_CONTAINER.get(None)
-        new_kwargs = await self._dependency_func(current_container, 1 if self._self is not None else 0, args, kwargs)
+        new_kwargs = await self._dependency_func(DI_CONTAINER.get(None), 1 if self._self else 0, args, kwargs)
         if len(new_kwargs) > len(kwargs):
             func_name = ((self._self.__class__.__name__ + ".") if self._self else "") + self._func.__name__
             LOGGER.debug("calling function %r with resolved dependencies", func_name)
 
-        if self._self is not None:
+        if self._self:
             return await utils.maybe_await(self._func(self._self, *args, **new_kwargs))
         return await utils.maybe_await(self._func(*args, **new_kwargs))
 
@@ -384,7 +383,7 @@ class AutoInjecting:
         def gen_random_name() -> str:
             while True:
                 if (generated_name := "".join(random.choices(string.ascii_lowercase, k=5))) in exec_globals:
-                    continue
+                    continue  # pragma: no cover
 
                 return generated_name
             # this can never happen but pycharm is being stupid
@@ -396,6 +395,7 @@ class AutoInjecting:
             name, type_expr = tup
             if type_expr is CANNOT_INJECT:
                 continue
+
             exec_globals[n := gen_random_name()] = type_expr
             fn_lines.append(
                 f"if '{name}' not in new_kwargs and arglen < ({i + 1} - offset): new_kwargs['{name}'] = await {n}.resolve(container)"  # noqa: E501
@@ -404,6 +404,7 @@ class AutoInjecting:
         for name, type_expr in kw_only.items():
             if type_expr is CANNOT_INJECT:
                 continue
+
             exec_globals[n := gen_random_name()] = type_expr
             fn_lines.append(f"if '{name}' not in new_kwargs: new_kwargs['{name}'] = await {n}.resolve(container)")
 
