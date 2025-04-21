@@ -177,6 +177,10 @@ class DependencyExpression(t.Generic[T]):
             The resolved dependency, or ``None`` if the dependency could not be resolved, and ``required`` was
             ``True`` upon creation.
         """
+        # this is necessary to prevent more complicated generated code when parsing parameters
+        if container is None:  # type: ignore[reportUnnecessaryComparison]
+            raise exceptions.DependencyNotSatisfiableException("no DI context is available")
+
         if len(self._order) == 1 and self._required:
             return await container._get(self._order[0].inner_id)
 
