@@ -29,9 +29,14 @@ import functools
 import inspect
 import logging
 import os
+import random
+import string
 import sys
+import textwrap
 import typing as t
 from collections.abc import Coroutine
+from collections.abc import Mapping
+from collections.abc import Sequence
 
 from linkd import conditions
 from linkd import container
@@ -44,6 +49,10 @@ if t.TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from collections.abc import Awaitable
     from collections.abc import Callable
+
+    DependencyResolverFunctionT = Callable[
+        [container.Container | None, int, Sequence[t.Any], Mapping[str, t.Any]], Awaitable[Mapping[str, t.Any]]
+    ]
 
 P = t.ParamSpec("P")
 R = t.TypeVar("R")
@@ -323,27 +332,22 @@ class AutoInjecting:
         :meth:`~inject`
     """
 
-    __slots__ = ("_func", "_kw_only_params", "_pos_or_kw_params", "_self")
+    __slots__ = ("_dependency_func", "_func", "_self")
 
     def __init__(
         self,
         func: Callable[..., Awaitable[t.Any]],
         self_: t.Any = None,
-        _cached_pos_or_kw_params: list[tuple[str, t.Any]] | None = None,
-        _cached_kw_only_params: dict[str, t.Any] | None = None,
+        _dependency_func: DependencyResolverFunctionT | None = None,
     ) -> None:
         self._func = func
         self._self: t.Any = self_
 
-        if _cached_pos_or_kw_params is not None and _cached_kw_only_params is not None:
-            self._pos_or_kw_params = _cached_pos_or_kw_params
-            self._kw_only_params = _cached_kw_only_params
-        else:
-            self._pos_or_kw_params, self._kw_only_params = _parse_injectable_params(func)
+        self._dependency_func = _dependency_func
 
     def __get__(self, instance: t.Any, _: type[t.Any]) -> AutoInjecting:
         if instance is not None:
-            return AutoInjecting(self._func, instance, self._pos_or_kw_params, self._kw_only_params)
+            return AutoInjecting(self._func, instance, self._dependency_func)
         return self
 
     def __getattr__(self, item: str) -> t.Any:
@@ -356,38 +360,61 @@ class AutoInjecting:
         return setattr(self._func, key, value)
 
     async def __call__(self, *args: t.Any, **kwargs: t.Any) -> t.Any:
-        new_kwargs: dict[str, t.Any] = {}
-        new_kwargs.update(kwargs)
+        # codegen the func for the first run
+        if self._dependency_func is None:
+            self._dependency_func = self._codegen_dependency_func()
 
-        di_container: container.Container | None = DI_CONTAINER.get(None)
-
-        injectables = {
-            name: type
-            for name, type in self._pos_or_kw_params[len(args) + (self._self is not None) :]
-            if name not in new_kwargs
-        }
-        injectables.update({name: type for name, type in self._kw_only_params.items() if name not in new_kwargs})
-
-        for name, type_expr in injectables.items():
-            # Skip any arguments that we can't inject
-            if type_expr is CANNOT_INJECT:
-                continue
-
-            if di_container is None:
-                raise exceptions.DependencyNotSatisfiableException("no DI context is available")
-
-            assert isinstance(type_expr, conditions.DependencyExpression)
-
-            LOGGER.debug("requesting dependency matching %r", type_expr)  # type: ignore[reportUnknownArgumentType]
-            new_kwargs[name] = await type_expr.resolve(di_container)
-
+        new_kwargs = await self._dependency_func(DI_CONTAINER.get(None), 1 if self._self else 0, args, kwargs)
         if len(new_kwargs) > len(kwargs):
             func_name = ((self._self.__class__.__name__ + ".") if self._self else "") + self._func.__name__
             LOGGER.debug("calling function %r with resolved dependencies", func_name)
 
-        if self._self is not None:
+        if self._self:
             return await utils.maybe_await(self._func(self._self, *args, **new_kwargs))
         return await utils.maybe_await(self._func(*args, **new_kwargs))
+
+    def _codegen_dependency_func(
+        self,
+    ) -> DependencyResolverFunctionT:
+        pos_or_kw, kw_only = _parse_injectable_params(self._func)
+
+        exec_globals: dict[str, conditions.DependencyExpression[t.Any]] = {}
+
+        def gen_random_name() -> str:
+            while True:
+                if (generated_name := "".join(random.choices(string.ascii_lowercase, k=5))) in exec_globals:
+                    continue  # pragma: no cover
+
+                return generated_name
+            # this can never happen but pycharm is being stupid
+            return ""
+
+        fn_lines = ["arglen = len(args)", "new_kwargs = {}; new_kwargs.update(kwargs)"]
+
+        for i, tup in enumerate(pos_or_kw):
+            name, type_expr = tup
+            if type_expr is CANNOT_INJECT:
+                continue
+
+            exec_globals[n := gen_random_name()] = type_expr
+            fn_lines.append(
+                f"if '{name}' not in new_kwargs and arglen < ({i + 1} - offset): new_kwargs['{name}'] = await {n}.resolve(container)"  # noqa: E501
+            )
+
+        for name, type_expr in kw_only.items():
+            if type_expr is CANNOT_INJECT:
+                continue
+
+            exec_globals[n := gen_random_name()] = type_expr
+            fn_lines.append(f"if '{name}' not in new_kwargs: new_kwargs['{name}'] = await {n}.resolve(container)")
+
+        fn_lines.append("return new_kwargs")
+
+        fn = "async def resolve_dependencies(container, offset, args, kwargs):\n" + "\n".join(
+            textwrap.indent(line, "    ") for line in fn_lines
+        )
+        exec(fn, exec_globals, (generated_locals := {}))
+        return generated_locals["resolve_dependencies"]  # type: ignore[reportReturnType]
 
 
 @t.overload
