@@ -50,6 +50,10 @@ if t.TYPE_CHECKING:
     from collections.abc import Awaitable
     from collections.abc import Callable
 
+    DependencyResolverFunctionT = Callable[
+        [container.Container | None, int, Sequence[t.Any], Mapping[str, t.Any]], Awaitable[Mapping[str, t.Any]]
+    ]
+
 P = t.ParamSpec("P")
 R = t.TypeVar("R")
 T = t.TypeVar("T")
@@ -334,15 +338,12 @@ class AutoInjecting:
         self,
         func: Callable[..., Awaitable[t.Any]],
         self_: t.Any = None,
-        _dependency_func: Callable[
-            [container.Container | None, int, Sequence[t.Any], Mapping[str, t.Any]], t.Awaitable[Mapping[str, t.Any]]
-        ]
-        | None = None,
+        _dependency_func: DependencyResolverFunctionT | None = None,
     ) -> None:
         self._func = func
         self._self: t.Any = self_
 
-        self._dependency_func = None
+        self._dependency_func = _dependency_func
 
     def __get__(self, instance: t.Any, _: type[t.Any]) -> AutoInjecting:
         if instance is not None:
@@ -375,23 +376,21 @@ class AutoInjecting:
 
     def _codegen_dependency_func(
         self,
-    ) -> Callable[
-        [container.Container | None, int, Sequence[t.Any], Mapping[str, t.Any]], t.Awaitable[Mapping[str, t.Any]]
-    ]:
+    ) -> DependencyResolverFunctionT:
         pos_or_kw, kw_only = _parse_injectable_params(self._func)
 
         exec_globals: dict[str, conditions.DependencyExpression[t.Any]] = {}
 
         def gen_random_name() -> str:
             while True:
-                if (generated_name := "".join(random.choices(string.ascii_lowercase, k=15))) in exec_globals:
+                if (generated_name := "".join(random.choices(string.ascii_lowercase, k=5))) in exec_globals:
                     continue
 
                 return generated_name
             # this can never happen but pycharm is being stupid
             return ""
 
-        fn_lines = ["new_kwargs = {}", "new_kwargs.update(kwargs)"]
+        fn_lines = ["arglen = len(args)", "new_kwargs = {}; new_kwargs.update(kwargs)"]
 
         for i, tup in enumerate(pos_or_kw):
             name, type_expr = tup
@@ -399,7 +398,7 @@ class AutoInjecting:
                 continue
             exec_globals[n := gen_random_name()] = type_expr
             fn_lines.append(
-                f"if '{name}' not in new_kwargs and len(args) < {i + 1} - offset: new_kwargs['{name}'] = await {n}.resolve(container)"  # noqa: E501
+                f"if '{name}' not in new_kwargs and arglen < ({i + 1} - offset): new_kwargs['{name}'] = await {n}.resolve(container)"  # noqa: E501
             )
 
         for name, type_expr in kw_only.items():
@@ -413,7 +412,6 @@ class AutoInjecting:
         fn = "async def resolve_dependencies(container, offset, args, kwargs):\n" + "\n".join(
             textwrap.indent(line, "    ") for line in fn_lines
         )
-        print(fn)
         exec(fn, exec_globals, (generated_locals := {}))
         return generated_locals["resolve_dependencies"]  # type: ignore[reportReturnType]
 
