@@ -8,6 +8,13 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 
 <!-- next-changelog -->
 
+## v0.0.5 (2025-04-28)
+### Features
+
+- Generate independent dependency resolver functions for each injection-enabled callable, increasing performance by up to 4x. ([#8](https://github.com/tandemdude/linkd/issues/8))
+
+----
+
 ## v0.0.4 (2025-04-13)
 ### Breaking Changes
 
