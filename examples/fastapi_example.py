@@ -1,6 +1,6 @@
 # /// script
 # dependencies = [
-#   "linkd>=0.0.4",
+#   "linkd",
 #   "fastapi[standard]==0.115.12",
 #   "redis==5.2.1",
 # ]

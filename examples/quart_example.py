@@ -1,6 +1,6 @@
 # /// script
 # dependencies = [
-#   "linkd>=0.0.4",
+#   "linkd",
 #   "quart==0.20.0",
 #   "uvicorn==0.34.0",
 #   "redis==5.2.1",

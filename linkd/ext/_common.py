@@ -23,11 +23,14 @@ from __future__ import annotations
 
 __all__ = ["REQUEST_CONTEXT", "InjectedCallableT", "RequestContainer"]
 
+import functools
+import inspect
 import typing as t
 from collections.abc import Callable
 
 from linkd import container
 from linkd import context
+from linkd import solver
 
 InjectedCallableT = t.TypeVar("InjectedCallableT", bound=Callable[..., t.Any])
 
@@ -35,3 +38,21 @@ RequestContainer = t.NewType("RequestContainer", container.Container)
 """Injectable type representing the dependency container for the HTTP request context."""
 
 REQUEST_CONTEXT = context.global_context_registry.register("linkd.contexts.http.request", RequestContainer)
+
+
+def enable_injection_kw_erased(func: InjectedCallableT) -> InjectedCallableT:
+    injection_enabled = solver.inject(func)
+
+    sig = inspect.signature(func)
+    new_params: list[inspect.Parameter] = []
+    for param in sig.parameters.values():
+        if param.kind == inspect.Parameter.KEYWORD_ONLY:
+            continue
+        new_params.append(param)
+
+    @functools.wraps(func)
+    async def _wrapper(*args: t.Any, **kwargs: t.Any) -> t.Any:
+        return await injection_enabled(*args, **kwargs)
+
+    _wrapper.__signature__ = sig.replace(parameters=new_params)  # type: ignore[reportMemberAccess]
+    return t.cast("InjectedCallableT", _wrapper)

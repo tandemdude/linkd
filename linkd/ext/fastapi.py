@@ -30,7 +30,6 @@ from __future__ import annotations
 
 __all__ = ["Contexts", "RequestContainer", "RootContainer", "inject", "use_di_context_middleware"]
 
-import inspect
 import logging
 import typing as t
 
@@ -141,14 +140,4 @@ def inject(func: _common.InjectedCallableT) -> _common.InjectedCallableT:
             ) -> None:
                 ...
     """
-    func = _solver.inject(func)
-    sig = inspect.signature(func)
-
-    new_params: list[inspect.Parameter] = []
-    for param in sig.parameters.values():
-        if param.kind == inspect.Parameter.KEYWORD_ONLY:
-            continue
-        new_params.append(param)
-
-    func.__signature__ = sig.replace(parameters=new_params)  # type: ignore[reportMemberAccess]
-    return func
+    return _common.enable_injection_kw_erased(func)

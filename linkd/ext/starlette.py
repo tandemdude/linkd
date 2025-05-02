@@ -30,6 +30,7 @@ from __future__ import annotations
 
 __all__ = ["Contexts", "DiContextMiddleware", "RequestContainer", "RootContainer", "inject"]
 
+import functools
 import typing as t
 
 from linkd import context as _context
@@ -151,10 +152,11 @@ def inject(func: _common.InjectedCallableT) -> _common.InjectedCallableT:
 
             app = Starlette(routes=routes, lifetime=..., middleware=middleware)
     """
-    func = _solver.inject(func)
+    injection_enabled = _solver.inject(func)
 
+    @functools.wraps(func)
     async def wrapper(*args: t.Any, **kwargs: t.Any) -> t.Any:
-        return await func(*args, **kwargs)
+        return await injection_enabled(*args, **kwargs)
 
     # sorry pyright :/
     return wrapper  # type: ignore[reportReturnType]
