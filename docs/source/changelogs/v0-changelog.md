@@ -8,6 +8,13 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 
 <!-- next-changelog -->
 
+## v0.0.6 (2025-05-02)
+### Bugfixes
+
+- Fix fastapi extension not working due to wrapping the route handlers incorrectly.
+
+----
+
 ## v0.0.5 (2025-04-28)
 ### Features
 
