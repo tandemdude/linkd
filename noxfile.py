@@ -88,6 +88,7 @@ def test(session: nox.Session) -> None:
 
 @nox_session()
 def sphinx(session: nox.Session) -> None:
+    session.install(".")
     session.install("--group", "docs")
     session.run("python", "./scripts/docs/api_reference_generator.py")
     session.run("python", "-m", "sphinx.cmd.build", "docs/source", "docs/build", "-b", "html")
