@@ -24,8 +24,10 @@ from unittest import mock
 import pytest
 
 import linkd
+from linkd import compose
 from linkd import solver
 from linkd.solver import CANNOT_INJECT
+from linkd.solver import _parse_composed_dependencies
 from linkd.solver import _parse_injectable_params
 
 COMMAND_CONTEXT = linkd.global_context_registry.register("linkd.contexts.command")
@@ -69,12 +71,36 @@ class TestSignatureParsing:
         pos, kw = _parse_injectable_params(m)
 
         assert len(pos) == 2
+        assert isinstance(pos[0][1], linkd.DependencyExpression)
         assert pos[0][1]._order[0].inner is str and pos[0][1]._required
+        assert isinstance(pos[1][1], linkd.DependencyExpression)
         assert pos[1][1]._order[0].inner is int and pos[1][1]._required
 
         assert len(kw) == 2
+        assert isinstance(kw["baz"], linkd.DependencyExpression)
         assert kw["baz"]._order[0].inner is float and kw["baz"]._required
+        assert isinstance(kw["bork"], linkd.DependencyExpression)
         assert kw["bork"]._order[0].inner is bool and kw["bork"]._required
+
+
+class TestComposedTypeParsing:
+    def test_parses_composed_type_correctly(self) -> None:
+        class Deps(linkd.Compose):
+            foo: str
+            bar: int
+
+        deps = _parse_composed_dependencies(Deps)
+
+        assert len(deps) == 2
+        assert "foo" in deps and "bar" in deps
+
+        # check that it reuses the cached value
+        setattr(Deps, compose._DEPS_ATTR, deps)
+        assert _parse_composed_dependencies(Deps) is deps
+
+    def test_errors_for_non_composed_type(self) -> None:
+        with pytest.raises(TypeError):
+            _parse_composed_dependencies(int)  # type: ignore[reportArgumentType]
 
 
 class TestMethodInjection:
@@ -243,6 +269,24 @@ class TestMethodInjection:
 
         async with manager.enter_context(linkd.Contexts.ROOT):
             await m("bar")
+
+    @pytest.mark.asyncio
+    async def test_composed_dependency_provided_correctly(self) -> None:
+        class Deps(linkd.Compose):
+            foo: str
+            bar: int
+
+        manager = linkd.DependencyInjectionManager()
+        manager.registry_for(linkd.Contexts.ROOT).register_value(str, "foo")
+        manager.registry_for(linkd.Contexts.ROOT).register_value(int, 1234)
+
+        @linkd.inject
+        async def m(d: Deps = linkd.INJECTED) -> None:
+            assert d.foo == "foo"
+            assert d.bar == 1234
+
+        async with manager.enter_context(linkd.Contexts.ROOT):
+            await m()
 
 
 class TestDependencyInjectionManager:

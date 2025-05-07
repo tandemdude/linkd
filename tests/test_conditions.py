@@ -18,45 +18,31 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""A powerful async-only dependency injection framework for Python."""
+import pytest
 
-from linkd import ext
-from linkd.compose import *
-from linkd.conditions import *
-from linkd.container import *
-from linkd.context import *
-from linkd.exceptions import *
-from linkd.graph import *
-from linkd.registry import *
-from linkd.solver import *
+import linkd
 
-__all__ = [
-    "DI_CONTAINER",
-    "DI_ENABLED",
-    "INJECTED",
-    "AutoInjecting",
-    "CircularDependencyException",
-    "Compose",
-    "Container",
-    "ContainerClosedException",
-    "Context",
-    "ContextRegistry",
-    "Contexts",
-    "DependencyData",
-    "DependencyExpression",
-    "DependencyInjectionException",
-    "DependencyInjectionManager",
-    "DependencyNotSatisfiableException",
-    "DiGraph",
-    "If",
-    "Registry",
-    "RegistryFrozenException",
-    "RootContainer",
-    "Try",
-    "ext",
-    "global_context_registry",
-    "inject",
-]
 
-# Do not change the below field manually. It is updated by CI upon release.
-__version__ = "0.0.6"
+class Deps(linkd.Compose):
+    foo: str
+    bar: int
+
+
+class TestBaseCondition:
+    def test_cannot_instantiate_with_composite_type(self) -> None:
+        with pytest.raises(ValueError):
+            linkd.If(int | str)  # type: ignore[reportCallIssue]
+
+    def test_cannot_instantiate_with_composed_type(self) -> None:
+        with pytest.raises(ValueError):
+            linkd.If(Deps)  # type: ignore[reportCallIssue]
+
+
+class TestDependencyExpression:
+    def test_cannot_create_from_composed_type(self) -> None:
+        with pytest.raises(ValueError):
+            linkd.DependencyExpression.create(Deps)
+
+    def test_cannot_create_from_composed_union(self) -> None:
+        with pytest.raises(ValueError):
+            linkd.DependencyExpression.create(Deps | None)

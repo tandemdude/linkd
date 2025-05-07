@@ -18,45 +18,15 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""A powerful async-only dependency injection framework for Python."""
+import linkd
 
-from linkd import ext
-from linkd.compose import *
-from linkd.conditions import *
-from linkd.container import *
-from linkd.context import *
-from linkd.exceptions import *
-from linkd.graph import *
-from linkd.registry import *
-from linkd.solver import *
 
-__all__ = [
-    "DI_CONTAINER",
-    "DI_ENABLED",
-    "INJECTED",
-    "AutoInjecting",
-    "CircularDependencyException",
-    "Compose",
-    "Container",
-    "ContainerClosedException",
-    "Context",
-    "ContextRegistry",
-    "Contexts",
-    "DependencyData",
-    "DependencyExpression",
-    "DependencyInjectionException",
-    "DependencyInjectionManager",
-    "DependencyNotSatisfiableException",
-    "DiGraph",
-    "If",
-    "Registry",
-    "RegistryFrozenException",
-    "RootContainer",
-    "Try",
-    "ext",
-    "global_context_registry",
-    "inject",
-]
+class TestCompose:
+    def test_compose_generates_working_class(self) -> None:
+        class Deps(linkd.Compose):
+            foo: str
+            bar: int
 
-# Do not change the below field manually. It is updated by CI upon release.
-__version__ = "0.0.6"
+        d = Deps("foo", 1234)
+        assert d.foo == "foo"
+        assert d.bar == 1234
