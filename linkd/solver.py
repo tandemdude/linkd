@@ -38,6 +38,7 @@ from collections.abc import Coroutine
 from collections.abc import Mapping
 from collections.abc import Sequence
 
+from linkd import compose
 from linkd import conditions
 from linkd import container
 from linkd import context as context_
@@ -58,12 +59,14 @@ P = t.ParamSpec("P")
 R = t.TypeVar("R")
 T = t.TypeVar("T")
 AsyncFnT = t.TypeVar("AsyncFnT", bound=t.Callable[..., Coroutine[t.Any, t.Any, t.Any]])
+DependencyExprOrComposed: t.TypeAlias = t.Union[conditions.DependencyExpression[t.Any], type[compose.Compose]]
+
+LOGGER = logging.getLogger(__name__)
 
 DI_ENABLED: t.Final[bool] = os.environ.get("LINKD_DI_DISABLED", "false").lower() != "true"
 DI_CONTAINER: contextvars.ContextVar[container.Container | None] = contextvars.ContextVar(
     "linkd_container", default=None
 )
-LOGGER = logging.getLogger(__name__)
 
 INJECTED: t.Final[t.Any] = utils.Marker("INJECTED")
 """
@@ -288,17 +291,39 @@ class DependencyInjectionManager:
 CANNOT_INJECT: t.Final[t.Any] = utils.Marker("CANNOT_INJECT")
 
 
-def _parse_injectable_params(func: Callable[..., t.Any]) -> tuple[list[tuple[str, t.Any]], dict[str, t.Any]]:
-    positional_or_keyword_params: list[tuple[str, t.Any]] = []
-    keyword_only_params: dict[str, t.Any] = {}
+def _parse_composed_dependencies(cls: type[compose.Compose]) -> dict[str, conditions.DependencyExpression[t.Any]]:
+    if (existing := getattr(cls, compose._DEPS_ATTR, None)) is not None:
+        return existing
+
+    actual_class = getattr(cls, compose._ACTUAL_ATTR, None)
+    if actual_class is None:
+        raise TypeError(f"class {cls} is not a composed dependency")
+
+    actual_class = t.cast("type[t.Any]", actual_class)
+    hints = t.get_type_hints(
+        actual_class, localns={m: sys.modules[m] for m in utils.ANNOTATION_PARSE_LOCAL_INCLUDE_MODULES}
+    )
+    return {
+        name: conditions.DependencyExpression.create(annotation)
+        for name, annotation in hints.items()
+        if name in getattr(cls, "__slots__")
+    }
+
+
+def _parse_injectable_params(
+    func: Callable[..., t.Any],
+) -> tuple[list[tuple[str, DependencyExprOrComposed]], dict[str, DependencyExprOrComposed]]:
+    positional_or_keyword_params: list[tuple[str, DependencyExprOrComposed]] = []
+    keyword_only_params: dict[str, DependencyExprOrComposed] = {}
 
     parameters = inspect.signature(
         func, locals={m: sys.modules[m] for m in utils.ANNOTATION_PARSE_LOCAL_INCLUDE_MODULES}, eval_str=True
     ).parameters
     for parameter in parameters.values():
+        annotation = parameter.annotation
         if (
             # If the parameter has no annotation
-            parameter.annotation is inspect.Parameter.empty
+            annotation is inspect.Parameter.empty
             # If the parameter is not positional-or-keyword or keyword-only
             or parameter.kind
             in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
@@ -309,12 +334,17 @@ def _parse_injectable_params(func: Callable[..., t.Any]) -> tuple[list[tuple[str
                 positional_or_keyword_params.append((parameter.name, CANNOT_INJECT))
             continue
 
-        expr = conditions.DependencyExpression.create(parameter.annotation)
+        if compose._is_compose_class(annotation):
+            setattr(annotation, compose._DEPS_ATTR, _parse_composed_dependencies(annotation))
+
+        item = (
+            annotation if compose._is_compose_class(annotation) else conditions.DependencyExpression.create(annotation)
+        )
         if parameter.kind is inspect.Parameter.POSITIONAL_OR_KEYWORD:
-            positional_or_keyword_params.append((parameter.name, expr))
+            positional_or_keyword_params.append((parameter.name, item))
         else:
             # It has to be a keyword-only parameter
-            keyword_only_params[parameter.name] = expr
+            keyword_only_params[parameter.name] = item
 
     return positional_or_keyword_params, keyword_only_params
 
@@ -378,7 +408,7 @@ class AutoInjecting:
     ) -> DependencyResolverFunctionT:
         pos_or_kw, kw_only = _parse_injectable_params(self._func)
 
-        exec_globals: dict[str, conditions.DependencyExpression[t.Any]] = {}
+        exec_globals: dict[str, DependencyExprOrComposed] = {}
 
         def gen_random_name() -> str:
             while True:
@@ -389,30 +419,46 @@ class AutoInjecting:
             # this can never happen but pycharm is being stupid
             return ""
 
+        def resolver(dependency: DependencyExprOrComposed, refname: str) -> t.Any:
+            if not compose._is_compose_class(dependency):
+                return f"await {refname}.resolve(container)"
+
+            init_params: list[str] = []
+            subdeps = t.cast(
+                "dict[str, conditions.DependencyExpression[t.Any]]", getattr(dependency, compose._DEPS_ATTR)
+            )
+            for subdep_name, subdep in subdeps.items():
+                exec_globals[ident := gen_random_name()] = subdep
+                init_params.append(f"{subdep_name}=await {ident}.resolve(container)")
+
+            return f"{refname}({','.join(init_params)})"
+
         fn_lines = ["arglen = len(args)", "new_kwargs = {}; new_kwargs.update(kwargs)"]
 
         for i, tup in enumerate(pos_or_kw):
-            name, type_expr = tup
-            if type_expr is CANNOT_INJECT:
+            name, dep = tup
+            if dep is CANNOT_INJECT:
                 continue
 
-            exec_globals[n := gen_random_name()] = type_expr
+            exec_globals[n := gen_random_name()] = dep
+
             fn_lines.append(
-                f"if '{name}' not in new_kwargs and arglen < ({i + 1} - offset): new_kwargs['{name}'] = await {n}.resolve(container)"  # noqa: E501
+                f"if '{name}' not in new_kwargs and arglen < ({i + 1} - offset): new_kwargs['{name}'] = {resolver(dep, n)}"  # noqa: E501
             )
 
-        for name, type_expr in kw_only.items():
-            if type_expr is CANNOT_INJECT:
+        for name, dep in kw_only.items():
+            if dep is CANNOT_INJECT:
                 continue
 
-            exec_globals[n := gen_random_name()] = type_expr
-            fn_lines.append(f"if '{name}' not in new_kwargs: new_kwargs['{name}'] = await {n}.resolve(container)")
+            exec_globals[n := gen_random_name()] = dep
+            fn_lines.append(f"if '{name}' not in new_kwargs: new_kwargs['{name}'] = {resolver(dep, n)}")
 
         fn_lines.append("return new_kwargs")
 
-        fn = "async def resolve_dependencies(container, offset, args, kwargs):\n" + "\n".join(
+        fn = "async def resolve_dependencies(container,offset,args,kwargs):\n" + "\n".join(
             textwrap.indent(line, "    ") for line in fn_lines
         )
+
         exec(fn, exec_globals, (generated_locals := {}))
         return generated_locals["resolve_dependencies"]  # type: ignore[reportReturnType]
 

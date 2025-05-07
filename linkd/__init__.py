@@ -21,6 +21,7 @@
 """A powerful async-only dependency injection framework for Python."""
 
 from linkd import ext
+from linkd.compose import *
 from linkd.conditions import *
 from linkd.container import *
 from linkd.context import *
@@ -35,6 +36,7 @@ __all__ = [
     "INJECTED",
     "AutoInjecting",
     "CircularDependencyException",
+    "Compose",
     "Container",
     "ContainerClosedException",
     "Context",

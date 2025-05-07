@@ -154,6 +154,11 @@ convention = "google"
 strict-imports = true
 require-superclass = true
 require-subclass = true
+exclude-classes = """
+(
+    ^linkd\\.compose:ComposeMeta$
+)
+"""
 
 [tool.pyright]
 include = ["linkd", "examples", "tests"]

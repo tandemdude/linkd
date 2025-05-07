@@ -69,11 +69,15 @@ class TestSignatureParsing:
         pos, kw = _parse_injectable_params(m)
 
         assert len(pos) == 2
+        assert isinstance(pos[0][1], linkd.DependencyExpression)
         assert pos[0][1]._order[0].inner is str and pos[0][1]._required
+        assert isinstance(pos[1][1], linkd.DependencyExpression)
         assert pos[1][1]._order[0].inner is int and pos[1][1]._required
 
         assert len(kw) == 2
+        assert isinstance(kw["baz"], linkd.DependencyExpression)
         assert kw["baz"]._order[0].inner is float and kw["baz"]._required
+        assert isinstance(kw["bork"], linkd.DependencyExpression)
         assert kw["bork"]._order[0].inner is bool and kw["bork"]._required
 
 
