@@ -48,7 +48,7 @@ class BaseCondition(abc.ABC):
 
     def __init__(self, inner: type[t.Any] | types.UnionType | tuple[t.Any, ...] | None) -> None:
         if isinstance(inner, tuple) or inner is None or t.get_origin(inner) in (types.UnionType, t.Union):
-            raise SyntaxError(f"{self.__class__.__name__!r} can only be parameterized by concrete types")
+            raise ValueError(f"{self.__class__.__name__!r} can only be parameterized by concrete types")
 
         if compose._is_compose_class(inner):
             raise ValueError(f"{self.__class__.__name__!r} cannot be parameterized by composed types")
