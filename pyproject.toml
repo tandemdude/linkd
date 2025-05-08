@@ -184,4 +184,4 @@ filterwarnings = [
 ]
 
 [tool.coverage.report]
-exclude_also = ["if t.TYPE_CHECKING:"]
+exclude_also = ["if t.TYPE_CHECKING:", "def __repr__"]

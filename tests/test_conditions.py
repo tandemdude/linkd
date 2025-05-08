@@ -37,6 +37,17 @@ class TestBaseCondition:
         with pytest.raises(ValueError):
             linkd.If(Deps)  # type: ignore[reportCallIssue]
 
+    def test___or___updates_order_correctly(self) -> None:
+        cond = (c := linkd.If[str]) | (int | bool)
+        assert cond.order == [c, int, bool]  # type: ignore[reportUnknownMemberType,reportAttributeAccessIssue]
+
+    def test___ror___updates_order_correctly(self) -> None:
+        cond = (int | bool) | (c := linkd.If[str])
+        assert cond.order == [int, bool, c]  # type: ignore[reportUnknownMemberType,reportAttributeAccessIssue]
+
+        cond = int | (c := linkd.If[str])
+        assert cond.order == [int, c]  # type: ignore[reportUnknownMemberType,reportAttributeAccessIssue]
+
 
 class TestDependencyExpression:
     def test_cannot_create_from_composed_type(self) -> None:

@@ -59,11 +59,12 @@ class TestSignatureParsing:
         assert pos[0][1] is CANNOT_INJECT and len(kw) == 0
 
     def test_parses_args_with_no_annotation_correctly(self) -> None:
-        def m(foo) -> None:  # type: ignore[unknownParameterType]
+        def m(foo, *, bar) -> None:  # type: ignore[unknownParameterType]
             ...
 
         pos, kw = _parse_injectable_params(m)  # type: ignore[unknownArgumentType]
-        assert pos[0][1] is CANNOT_INJECT and len(kw) == 0
+        assert pos[0][1] is CANNOT_INJECT
+        assert kw["bar"] is CANNOT_INJECT
 
     def test_parses_args_correctly(self) -> None:
         def m(foo: str, bar: int = linkd.INJECTED, *, baz: float, bork: bool = linkd.INJECTED) -> None: ...
@@ -247,14 +248,14 @@ class TestMethodInjection:
 
         class AClass:
             @linkd.inject
-            async def bound_method(self, obj: object, val: Value = linkd.INJECTED) -> None:
+            async def bound_method(self, *, obj, val: Value = linkd.INJECTED) -> None:  # type: ignore[reportUnknownParameterType,reportMissingParameterType]
                 assert obj is obj_
                 assert val is value
 
         instance = AClass()
 
         async with manager.enter_context(linkd.Contexts.ROOT):
-            await instance.bound_method(obj_)
+            await instance.bound_method(obj=obj_)  # type: ignore[reportUnknownMemberType]
 
     @pytest.mark.asyncio
     async def test_dependency_provided_when_argument_passed_to_non_annotated_parameter(self) -> None:
@@ -378,6 +379,17 @@ class TestDependencyInjectionManager:
         solver._NOOP_CONTAINER.add_value(object, object())
         solver._NOOP_CONTAINER.add_factory(object, object)
 
+    @pytest.mark.asyncio
+    async def test_contextual_decorator_sets_up_context_correctly(self) -> None:
+        manager = linkd.DependencyInjectionManager()
+
+        @manager.contextual(linkd.Contexts.ROOT)
+        @linkd.inject
+        async def m(c: linkd.RootContainer = linkd.INJECTED) -> None:
+            assert c is manager.default_container
+
+        await m()
+
 
 class TestAutoInjecting:
     def test_setattr_passes_through_to_wrapped_function(self) -> None:
@@ -406,7 +418,7 @@ class TestAutoInjecting:
         assert foo.bar._self is foo  # type: ignore[reportFunctionMemberAccess]
 
 
-class TestWithDiDecorator:
+class TestInjectDecorator:
     def test_enables_di_if_di_globally_enabled(self) -> None:
         wrapped = linkd.inject(lambda: "foo")
         assert isinstance(wrapped, solver.AutoInjecting)

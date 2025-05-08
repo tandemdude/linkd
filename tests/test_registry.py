@@ -97,3 +97,25 @@ class TestRegistry:
 
         with pytest.raises(ValueError):
             registry.register_factory(object, f)
+
+    def test_cannot_have_factory_with_unannotated_args(self) -> None:
+        registry = linkd.Registry()
+
+        def f(_) -> object:
+            return object()
+
+        with pytest.raises(ValueError):
+            registry.register_factory(object, f)  # type: ignore[reportUnknownArgumentType]
+
+    def test_overriding_dependency_replaces_graph_edges(self) -> None:
+        registry = linkd.Registry()
+
+        def f_0(_: str, __: int) -> object:
+            return object()
+
+        def f_1(_: float, __: bool) -> object:
+            return object()
+
+        registry.register_factory(object, f_0)
+        registry.register_factory(object, f_1)
+        assert ("object", "str") not in registry._graph.out_edges("object")

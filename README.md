@@ -1,4 +1,4 @@
-[![PyPI](https://img.shields.io/pypi/v/linkd)](https://pypi.org/project/linkd)
+[![PyPI](https://img.shields.io/pypi/v/linkd)](https://pypi.org/project/linkd) [![codecov](https://codecov.io/gh/tandemdude/linkd/graph/badge.svg?token=hZZlq0O9Vx)](https://codecov.io/gh/tandemdude/linkd)
 
 # Overview
 Linkd is a powerful [dependency-injection](https://en.wikipedia.org/wiki/Dependency_injection) framework for

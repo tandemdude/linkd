@@ -283,6 +283,33 @@ class TestStandaloneContainer:
                 pass
             await c.get(object)
 
+    @pytest.mark.asyncio
+    async def test_overriding_dependency_replaces_graph_edges(self) -> None:
+        registry = linkd.Registry()
+
+        def f_0(_: str, __: int) -> object:
+            return object()
+
+        def f_1(_: float, __: bool) -> object:
+            return object()
+
+        async with linkd.Container(registry) as c:
+            c.add_factory(object, f_0)
+            c.add_factory(object, f_1)
+            assert ("object", "str") not in c._graph.out_edges("object")
+
+            c.add_value(object, object())
+            assert len(c._graph.out_edges("object")) == 0
+
+    @pytest.mark.asyncio
+    async def test__get_from_closed_container_raises_exception(self) -> None:
+        registry = linkd.Registry()
+
+        with pytest.raises(linkd.ContainerClosedException):
+            async with linkd.Container(registry) as c:
+                pass
+            await c._get("object")
+
 
 class TestContainerWithParent:
     @pytest.mark.asyncio

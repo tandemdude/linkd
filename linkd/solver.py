@@ -332,6 +332,8 @@ def _parse_injectable_params(
         ):
             if parameter.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):
                 positional_or_keyword_params.append((parameter.name, CANNOT_INJECT))
+            elif parameter.kind == inspect.Parameter.KEYWORD_ONLY:
+                keyword_only_params[parameter.name] = CANNOT_INJECT
             continue
 
         if compose._is_compose_class(annotation):
