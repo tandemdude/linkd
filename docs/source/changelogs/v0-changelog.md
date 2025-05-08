@@ -8,6 +8,17 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 
 <!-- next-changelog -->
 
+## v0.0.7 (2025-05-08)
+### Features
+
+- Add `Compose` class to group multiple dependencies into a single object for cleaner function signatures. ([#9](https://github.com/tandemdude/linkd/issues/9))
+
+### Miscellaneous
+
+- Increase test coverage to 100% for the core library, excluding extension modules.
+
+----
+
 ## v0.0.6 (2025-05-02)
 ### Bugfixes
 
