@@ -33,9 +33,11 @@ from linkd import utils as di_utils
 if t.TYPE_CHECKING:
     from collections.abc import Sequence
 
+    # import typing_extensions as t_ex
     from linkd import container as container_
 
 T = t.TypeVar("T")
+# D = t.TypeVar("D")
 
 
 class BaseCondition(abc.ABC):
@@ -161,10 +163,13 @@ class DependencyExpression(t.Generic[T]):
         required: Whether the dependency expression is required - i.e. can resolve to ``None``.
     """
 
-    __slots__ = ("_order", "_required")
+    __slots__ = ("_order", "_required", "_size")
 
     def __init__(self, order: Sequence[BaseCondition], required: bool) -> None:
         self._order = order
+        # pre-computing this saves a small amount of time during execution
+        self._size = len(order)
+
         self._required = required
 
     def __repr__(self) -> str:
@@ -185,7 +190,7 @@ class DependencyExpression(t.Generic[T]):
         if container is None:  # type: ignore[reportUnnecessaryComparison]
             raise exceptions.DependencyNotSatisfiableException("no DI context is available")
 
-        if len(self._order) == 1 and self._required:
+        if self._required and self._size == 1:
             return await container._get(self._order[0].inner_id)
 
         for dependency in self._order:
@@ -196,11 +201,13 @@ class DependencyExpression(t.Generic[T]):
         if not self._required:
             return None
 
-        raise exceptions.DependencyNotSatisfiableException("no dependencies can satisfy the requested type")
+        raise exceptions.DependencyNotSatisfiableException(f"no dependencies can satisfy the requested type - '{self}'")
 
     # TODO - TypeExpr
     @classmethod
     def create(cls, expr: t.Any, /) -> DependencyExpression[t.Any]:
+        # @classmethod
+        # def create(cls, expr: t_ex.TypeForm[D]) -> DependencyExpression[D]:
         """
         Create a dependency expression from a type expression (type hint).
 

@@ -165,8 +165,10 @@ exclude-classes = """
 [tool.pyright]
 include = ["linkd", "examples", "tests"]
 exclude = ["docs", ".github"]
-pythonVersion = "3.10"
+pythonVersion = "3.12"
 typeCheckingMode = "strict"
+
+# enableExperimentalFeatures = true
 
 reportUnnecessaryTypeIgnoreComment = "error"
 reportMissingTypeStubs = "none"
