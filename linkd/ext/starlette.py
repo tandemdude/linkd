@@ -47,7 +47,7 @@ if t.TYPE_CHECKING:
 
 @t.final
 class Contexts:
-    """Collection of the dependency injection context values linkd.ext.fastapi uses."""
+    """Collection of the dependency injection context values linkd.ext.starlette uses."""
 
     __slots__ = ()
 

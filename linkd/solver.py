@@ -27,6 +27,7 @@ import contextlib
 import contextvars
 import functools
 import inspect
+import keyword
 import logging
 import os
 import random
@@ -420,7 +421,9 @@ class AutoInjecting:
 
         def gen_random_name() -> str:
             while True:
-                if (generated_name := "".join(random.choices(string.ascii_lowercase, k=5))) in exec_globals:
+                if (
+                    generated_name := "".join(random.choices(string.ascii_lowercase, k=5))
+                ) in exec_globals or keyword.iskeyword(generated_name):
                     continue  # pragma: no cover
 
                 return generated_name
