@@ -28,6 +28,8 @@ __all__ = [
     "RegistryFrozenException",
 ]
 
+import typing as t
+
 
 class DependencyInjectionException(Exception):
     """Base class for all exceptions raised from the dependency injection system."""
@@ -47,3 +49,23 @@ class DependencyNotSatisfiableException(DependencyInjectionException):
 
 class RegistryFrozenException(DependencyInjectionException):
     """Exception raised when attempting to register a new dependency with a frozen registry."""
+
+
+class CodeGenerationFailedException(DependencyInjectionException, SyntaxError):
+    """Exception raised code generation of a dependency resolver function failed."""
+
+    def __init__(self, generated_code: str, exec_globals: dict[str, t.Any]) -> None:
+        super().__init__(
+            "\n".join(
+                [
+                    "dependency resolver function generation failed",
+                    "generated code was:",
+                    "",
+                    generated_code,
+                    "",
+                    f"globals were: {exec_globals}",
+                ]
+            )
+        )
+        self.generated_code = generated_code
+        self.exec_globals = exec_globals

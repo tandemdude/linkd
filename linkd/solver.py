@@ -45,6 +45,7 @@ from linkd import context as context_
 from linkd import exceptions
 from linkd import registry
 from linkd import utils
+from linkd.exceptions import CodeGenerationFailedException
 
 if t.TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -377,6 +378,11 @@ class AutoInjecting:
 
         self._dependency_func = _dependency_func
 
+    def __repr__(self) -> str:
+        return (
+            f"AutoInjecting({self._func.__name__}, bound={bool(self._self)}, generated={bool(self._dependency_func)})"
+        )
+
     def __get__(self, instance: t.Any, _: type[t.Any]) -> AutoInjecting:
         if instance is not None:
             return AutoInjecting(self._func, instance, self._dependency_func)
@@ -461,7 +467,12 @@ class AutoInjecting:
             textwrap.indent(line, "    ") for line in fn_lines
         )
 
-        exec(fn, exec_globals, (generated_locals := {}))
+        try:
+            # use a copy of exec_globals so that the exception will show a more useful message
+            exec(fn, dict(exec_globals), (generated_locals := {}))
+        except SyntaxError as e:
+            raise CodeGenerationFailedException(fn, exec_globals) from e
+
         return generated_locals["resolve_dependencies"]  # type: ignore[reportReturnType]
 
 
