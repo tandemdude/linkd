@@ -8,6 +8,13 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 
 <!-- next-changelog -->
 
+## v0.0.8 (2025-06-19)
+### Features
+
+- Improved error output when dependency resolver function fails to generate for whatever reason.
+
+----
+
 ## v0.0.7 (2025-05-08)
 ### Features
 
