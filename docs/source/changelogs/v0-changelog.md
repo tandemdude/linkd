@@ -8,6 +8,13 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 
 <!-- next-changelog -->
 
+## v0.0.9 (2025-06-19)
+### Bugfixes
+
+- Fix code generation raising a `SyntaxError` when it happens to generate a reserved Python keyword (such as `async`).
+
+----
+
 ## v0.0.8 (2025-06-19)
 ### Features
 
