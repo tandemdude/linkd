@@ -404,7 +404,7 @@ class AutoInjecting:
             self._dependency_func = self._codegen_dependency_func()
 
         new_kwargs = await self._dependency_func(DI_CONTAINER.get(None), 1 if self._self else 0, args, kwargs)
-        if len(new_kwargs) > len(kwargs):
+        if __debug__ and len(new_kwargs) > len(kwargs):
             func_name = ((self._self.__class__.__name__ + ".") if self._self else "") + self._func.__name__
             LOGGER.debug("calling function %r with resolved dependencies", func_name)
 
@@ -444,7 +444,7 @@ class AutoInjecting:
 
             return f"{refname}({','.join(init_params)})"
 
-        fn_lines = ["arglen = len(args)", "new_kwargs = {}; new_kwargs.update(kwargs)"]
+        fn_lines = ["arglen = len(args); new_kwargs = dict(kwargs)"]
 
         for i, tup in enumerate(pos_or_kw):
             name, dep = tup
