@@ -163,7 +163,7 @@ class DependencyExpression(t.Generic[T]):
         required: Whether the dependency expression is required - i.e. can resolve to ``None``.
     """
 
-    __slots__ = ("_order", "_required", "_size")
+    __slots__ = ("_hash", "_order", "_required", "_size")
 
     def __init__(self, order: Sequence[BaseCondition], required: bool) -> None:
         self._order = order
@@ -171,6 +171,8 @@ class DependencyExpression(t.Generic[T]):
         self._size = len(order)
 
         self._required = required
+
+        self._hash = hash((self._required, *((type(elem), elem.inner_id) for elem in order)))
 
     def __repr__(self) -> str:
         return f"DependencyExpression({self._order}, required={self._required})"
@@ -190,15 +192,21 @@ class DependencyExpression(t.Generic[T]):
         if container is None:  # type: ignore[reportUnnecessaryComparison]
             raise exceptions.DependencyNotSatisfiableException("no DI context is available")
 
+        if self._hash in container._expression_cache:
+            return container._expression_cache[self._hash]
+
         if self._required and self._size == 1:
-            return await container._get(self._order[0].inner_id)
+            container._expression_cache[self._hash] = (dep := await container._get(self._order[0].inner_id))
+            return dep
 
         for dependency in self._order:
             succeeded, found = await dependency._get_from(container)
             if succeeded:
+                container._expression_cache[self._hash] = found
                 return found
 
         if not self._required:
+            container._expression_cache[self._hash] = None
             return None
 
         raise exceptions.DependencyNotSatisfiableException(f"no dependencies can satisfy the requested type - '{self}'")
