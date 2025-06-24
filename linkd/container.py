@@ -159,7 +159,6 @@ class Container:
                 self._graph.remove_edge(*edge)
 
         graph.populate_graph_for_dependency(self._graph, dependency_id, factory, teardown)
-
         self._on_change()
 
     def add_value(
@@ -192,7 +191,6 @@ class Container:
                 self._graph.remove_edge(*edge)
 
         self._graph.add_node(dependency_id, DependencyData(lambda: None, {}, teardown))
-
         self._on_change()
 
     async def _get(self, dependency_id: str) -> t.Any:
