@@ -27,9 +27,9 @@ def print_greeting(greeter: Greeter = linkd.INJECTED) -> None:
     print(greeter.greet())
 
 
+@manager.contextual(linkd.Contexts.ROOT)
 async def main() -> None:
-    async with manager.enter_context(linkd.Contexts.ROOT):
-        await print_greeting()
+    await print_greeting()
 
 
 if __name__ == "__main__":
