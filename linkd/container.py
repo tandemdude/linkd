@@ -52,7 +52,16 @@ class Container:
         parent: The parent container. Defaults to None.
     """
 
-    __slots__ = ("_closed", "_graph", "_instances", "_parent", "_registry", "_tag")
+    __slots__ = (
+        "_closed",
+        "_expression_cache",
+        "_graph",
+        "_instances",
+        "_on_change_listeners",
+        "_parent",
+        "_registry",
+        "_tag",
+    )
 
     def __init__(
         self, registry: registry_.Registry, *, parent: Container | None = None, tag: context.Context | None = None
@@ -68,7 +77,12 @@ class Container:
         self._graph: graph.DiGraph = graph.DiGraph(registry._graph)
         self._instances: dict[str, t.Any] = {}
 
+        self._expression_cache: dict[int, t.Any] = {}
+        self._on_change_listeners: set[Callable[[], None]] = set()
+
         self.add_value(Container, self)
+        if self._parent is not None:
+            self._parent._on_change_listeners.add(self._on_change)
 
     def __repr__(self) -> str:
         return f"Container(tag={self._tag!r})"
@@ -97,8 +111,16 @@ class Container:
     ) -> None:
         await self.close()
 
+    def _on_change(self) -> None:
+        self._expression_cache.clear()
+        for fn in self._on_change_listeners:
+            fn()
+
     async def close(self) -> None:
         """Closes the container, running teardown procedures for each created dependency belonging to this container."""
+        if self._parent is not None:
+            self._parent._on_change_listeners.remove(self._on_change)
+
         for dependency_id, instance in self._instances.items():
             if (node := self._graph.nodes.get(dependency_id)) is None or node.teardown_method is None:
                 continue
@@ -137,6 +159,7 @@ class Container:
                 self._graph.remove_edge(*edge)
 
         graph.populate_graph_for_dependency(self._graph, dependency_id, factory, teardown)
+        self._on_change()
 
     def add_value(
         self,
@@ -168,6 +191,7 @@ class Container:
                 self._graph.remove_edge(*edge)
 
         self._graph.add_node(dependency_id, DependencyData(lambda: None, {}, teardown))
+        self._on_change()
 
     async def _get(self, dependency_id: str) -> t.Any:
         if self._closed:
