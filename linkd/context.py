@@ -122,5 +122,5 @@ class Contexts:
 
     __slots__ = ()
 
-    ROOT = global_context_registry.register("linkd.contexts.default", RootContainer)
+    ROOT = global_context_registry.register("linkd.contexts.root", RootContainer)
     """The root DI context - ALL other contexts are built with this as the parent."""
