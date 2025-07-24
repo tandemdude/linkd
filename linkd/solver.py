@@ -403,7 +403,14 @@ class AutoInjecting:
         if self._dependency_func is None:
             self._dependency_func = self._codegen_dependency_func()
 
-        new_kwargs = await self._dependency_func(DI_CONTAINER.get(None), 1 if self._self else 0, args, kwargs)
+        try:
+            new_kwargs = await self._dependency_func(DI_CONTAINER.get(None), 1 if self._self else 0, args, kwargs)
+        except Exception as e:
+            func_name = ((self._self.__class__.__name__ + ".") if self._self else "") + self._func.__name__
+            raise exceptions.DependencyNotSatisfiableException(
+                f"failed resolving dependencies for {func_name!r}"
+            ) from e
+
         if __debug__ and len(new_kwargs) > len(kwargs):
             func_name = ((self._self.__class__.__name__ + ".") if self._self else "") + self._func.__name__
             LOGGER.debug("calling function %r with resolved dependencies", func_name)
