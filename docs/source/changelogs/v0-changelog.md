@@ -8,6 +8,17 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 
 <!-- next-changelog -->
 
+## v0.0.10 (2025-07-25)
+### Features
+
+- Slight increase in performance of DI across multiple calls for the same dependency expression. ([#12](https://github.com/tandemdude/linkd/issues/12))
+
+### Miscellaneous
+
+- Dependency resolution exceptions now include the name of the function that would have been called to help with debugging.
+
+----
+
 ## v0.0.9 (2025-06-19)
 ### Bugfixes
 
