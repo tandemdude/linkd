@@ -42,7 +42,7 @@ extensions = [
     "sanic==25.3.0"
 ]
 
-dev = ["nox==2025.2.9"]
+dev = ["nox==2025.5.1"]
 format = ["ruff==0.11.5"]
 test = [
     "pytest>=8.3.2, <9",
