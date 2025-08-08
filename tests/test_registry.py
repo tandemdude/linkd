@@ -18,7 +18,6 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-import typing as t
 
 import pytest
 
@@ -62,13 +61,17 @@ class TestRegistry:
 
     def test__contains__returns_true_when_NewType_dependency_registered(self) -> None:
         registry = linkd.Registry()
-        T = t.NewType("T", object)
+
+        class T: ...
+
         registry.register_value(T, object())
         assert T in registry
 
     def test__contains__returns_false_when_NewType_dependency_not_registered(self) -> None:
         registry = linkd.Registry()
-        T = t.NewType("T", object)
+
+        class T: ...
+
         assert T not in registry
 
     def test_cannot_have_factory_with_pos_only_args(self) -> None:

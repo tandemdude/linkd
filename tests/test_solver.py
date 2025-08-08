@@ -149,7 +149,7 @@ class TestMethodInjection:
 
     @pytest.mark.asyncio
     async def test_injection_by_new_type(self) -> None:
-        Foo = t.NewType("Foo", object)
+        class Foo: ...
 
         manager = linkd.DependencyInjectionManager()
 
@@ -242,8 +242,9 @@ class TestMethodInjection:
     async def test_dependency_provided_when_argument_passed_for_bound_method(self) -> None:
         manager = linkd.DependencyInjectionManager()
 
-        Value = t.NewType("Value", object)
-        value, obj_ = Value(object()), object()
+        class Value: ...
+
+        value, obj_ = Value(), object()
         manager.registry_for(linkd.Contexts.ROOT).register_value(Value, value)
 
         class AClass:
