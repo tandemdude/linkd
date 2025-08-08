@@ -84,7 +84,7 @@ class BaseCondition(abc.ABC):
             if item is None:
                 includes_none = True
             elif item is self:
-                parts.append(f"{self.__class__.__name__}[{self.inner_id}]")
+                parts.append(f"{self.__class__.__name__.lstrip('_')}[{self.inner_id}]")
             else:
                 parts.append(repr(item) if isinstance(item, BaseCondition) else di_utils.get_dependency_id(item))
 
@@ -175,7 +175,7 @@ class DependencyExpression(t.Generic[T]):
         self._hash = hash((self._required, *((type(elem), elem.inner_id) for elem in order)))
 
     def __repr__(self) -> str:
-        return f"DependencyExpression({self._order}, required={self._required})"
+        return f"DependencyExpression({' | '.join(repr(i) for i in self._order)}, required={self._required})"
 
     async def resolve(self, container: container_.Container, /) -> T | None:
         """
