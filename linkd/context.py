@@ -33,8 +33,11 @@ can be accessed using method injection if required. You can create and use your 
 creating an instance of this type.
 """
 
-RootContainer = t.NewType("RootContainer", container.Container)
-"""Injectable type representing the dependency container for the root context."""
+
+class RootContainer(container.Container):
+    __slots__ = ()
+
+    """Injectable type representing the dependency container for the root context."""
 
 
 class ContextRegistry:

@@ -27,13 +27,27 @@ import pytest
 import linkd
 from linkd import utils
 
-A = t.NewType("A", object)
-B = t.NewType("B", object)
-C = t.NewType("C", object)
-D = t.NewType("D", object)
-E = t.NewType("E", object)
-F = t.NewType("F", object)
-G = t.NewType("G", object)
+
+class A: ...
+
+
+class B: ...
+
+
+class C: ...
+
+
+class D: ...
+
+
+class E: ...
+
+
+class F: ...
+
+
+class G: ...
+
 
 T = t.TypeVar("T")
 

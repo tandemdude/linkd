@@ -34,8 +34,11 @@ from linkd import solver
 
 InjectedCallableT = t.TypeVar("InjectedCallableT", bound=Callable[..., t.Any])
 
-RequestContainer = t.NewType("RequestContainer", container.Container)
-"""Injectable type representing the dependency container for the HTTP request context."""
+
+class RequestContainer(container.Container):
+    __slots__ = ()
+    """Injectable type representing the dependency container for the HTTP request context."""
+
 
 REQUEST_CONTEXT = context.global_context_registry.register("linkd.contexts.http.request", RequestContainer)
 
