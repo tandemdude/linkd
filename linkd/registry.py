@@ -101,12 +101,32 @@ class Registry:
         """
         self.register_factory(typ, lambda: value, teardown=teardown)
 
+    @t.overload
     def register_factory(
         self,
         typ: type[T],
         factory: Callable[..., utils.MaybeAwaitable[T]],
         *,
         teardown: Callable[[T], utils.MaybeAwaitable[None]] | None = None,
+        lifetime: t.Literal[graph.Lifetime.SINGLETON] = graph.Lifetime.SINGLETON,
+    ) -> None: ...
+
+    @t.overload
+    def register_factory(
+        self,
+        typ: type[T],
+        factory: Callable[..., utils.MaybeAwaitable[T]],
+        *,
+        lifetime: t.Literal[graph.Lifetime.PROTOTYPE],
+    ) -> None: ...
+
+    def register_factory(
+        self,
+        typ: type[T],
+        factory: Callable[..., utils.MaybeAwaitable[T]],
+        *,
+        teardown: Callable[[T], utils.MaybeAwaitable[None]] | None = None,
+        lifetime: graph.Lifetime = graph.Lifetime.SINGLETON,
     ) -> None:
         """
         Registers a factory for creating a dependency.
@@ -116,16 +136,24 @@ class Registry:
             factory: The factory used to create the dependency. A factory method may take any number of parameters.
                 The parameters will all attempt to be dependency-injected when creating the dependency. Any default
                 parameter values will be ignored.
-            teardown: The teardown function to be called when the container is closed. Teardown functions
-                must take exactly one argument - the dependency that is being torn down. Defaults to :obj:`None`.
+            teardown: The teardown function to be called when the container is closed. Defaults to :obj:`None`. May
+                only be specified when lifetime is not set to :obj:`~linkd.graph.Lifetime.PROTOTYPE`.
+            lifetime: The lifetime of the dependency. Defaults to :obj:`~linkd.graph.Lifetime.SINGLETON`.
 
         Returns:
             :obj:`None`
 
         Raises:
+            :obj:`ValueError`: If 'lifetime' is set to 'PROTOTYPE' and 'teardown' is specified.
             :obj:`linkd.exceptions.RegistryFrozenException`: If the registry is frozen.
             :obj:`linkd.exceptions.CircularDependencyException`: If the factory requires itself as a dependency.
+
+        .. versionadded:: 0.1.0
+            The 'lifetime' parameter.
         """
+        if lifetime is graph.Lifetime.PROTOTYPE and teardown is not None:
+            raise ValueError("'teardown' cannot be used when lifetime is 'Lifetime.PROTOTYPE'")
+
         if self._active_containers:
             raise exceptions.RegistryFrozenException
 
@@ -137,4 +165,4 @@ class Registry:
             for edge in self._graph.out_edges(dependency_id):
                 self._graph.remove_edge(*edge)
 
-        graph.populate_graph_for_dependency(self._graph, dependency_id, factory, teardown)
+        graph.populate_graph_for_dependency(self._graph, dependency_id, factory, teardown, lifetime)

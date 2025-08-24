@@ -28,7 +28,7 @@ import typing as t
 
 from linkd import compose
 from linkd import exceptions
-from linkd import utils as di_utils
+from linkd import utils
 
 if t.TYPE_CHECKING:
     from collections.abc import Sequence
@@ -56,7 +56,7 @@ class BaseCondition(abc.ABC):
             raise ValueError(f"{self.__class__.__name__!r} cannot be parameterized by composed types")
 
         self.inner: type[t.Any] = inner  # type: ignore[reportAttributeAccessIssue]
-        self.inner_id: str = di_utils.get_dependency_id(inner)
+        self.inner_id: str = utils.get_dependency_id(inner)
 
         self.order: list[t.Any] = [self]
 
@@ -86,7 +86,7 @@ class BaseCondition(abc.ABC):
             elif item is self:
                 parts.append(f"{self.__class__.__name__.lstrip('_')}[{self.inner_id}]")
             else:
-                parts.append(repr(item) if isinstance(item, BaseCondition) else di_utils.get_dependency_id(item))
+                parts.append(repr(item) if isinstance(item, BaseCondition) else utils.get_dependency_id(item))
 
         if includes_none:
             parts.append("None")
@@ -192,21 +192,23 @@ class DependencyExpression(t.Generic[T]):
         if container is None:  # type: ignore[reportUnnecessaryComparison]
             raise exceptions.DependencyNotSatisfiableException("no DI context is available")
 
-        if self._hash in container._expression_cache:
-            return container._expression_cache[self._hash]
+        # TODO - revisit this implementation later to take into account prototype dependencies
+        # if self._hash in container._expression_cache:
+        #     return container._expression_cache[self._hash]
 
         if self._required and self._size == 1:
-            container._expression_cache[self._hash] = (dep := await container._get(self._order[0].inner_id))
-            return dep
+            # container._expression_cache[self._hash] = (dep := await container._get(self._order[0].inner_id))
+            # return dep
+            return await container._get(self._order[0].inner_id)
 
         for dependency in self._order:
             succeeded, found = await dependency._get_from(container)
             if succeeded:
-                container._expression_cache[self._hash] = found
+                # container._expression_cache[self._hash] = found
                 return found
 
         if not self._required:
-            container._expression_cache[self._hash] = None
+            # container._expression_cache[self._hash] = None
             return None
 
         raise exceptions.DependencyNotSatisfiableException(f"no dependencies can satisfy the requested type - '{self}'")

@@ -49,6 +49,7 @@ __all__ = [
     "DependencyNotSatisfiableException",
     "DiGraph",
     "If",
+    "Lifetime",
     "Registry",
     "RegistryFrozenException",
     "RootContainer",

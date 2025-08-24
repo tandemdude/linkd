@@ -20,9 +20,10 @@
 # SOFTWARE.
 from __future__ import annotations
 
-__all__ = ["DependencyData", "DiGraph"]
+__all__ = ["DependencyData", "DiGraph", "Lifetime"]
 
 import collections
+import enum
 import inspect
 import sys
 import typing as t
@@ -40,6 +41,25 @@ if t.TYPE_CHECKING:
 T = t.TypeVar("T")
 
 
+class Lifetime(enum.Enum):
+    """
+    Enum representing the lifetime of a dependency.
+
+    .. versionadded:: 0.1.0
+    """
+
+    SINGLETON = enum.auto()
+    """
+    The dependency will only ever be created once per container. All subsequent requests for the dependency
+    will use the instance that was created previously
+    """
+    PROTOTYPE = enum.auto()
+    """
+    The dependency will be created every time it is requested. No two injection requests for the dependency
+    will be given the same instance.
+    """
+
+
 class DependencyData(t.Generic[T]):
     """
     Data required in order to be able to create/destroy a given dependency.
@@ -48,15 +68,17 @@ class DependencyData(t.Generic[T]):
         factory_method: The method used to create the dependency.
         factory_params: Mapping of param name to dependency expression for any dependencies the factory depends on.
         teardown_method: The optional method used to teardown the dependency.
+        lifetime: The lifetime of the dependency.
     """
 
-    __slots__ = ("factory_method", "factory_params", "teardown_method")
+    __slots__ = ("factory_method", "factory_params", "lifetime", "teardown_method")
 
     def __init__(
         self,
         factory_method: Callable[..., utils.MaybeAwaitable[T]],
         factory_params: Mapping[str, conditions.DependencyExpression[T]],
         teardown_method: Callable[[T], utils.MaybeAwaitable[None]] | None,
+        lifetime: Lifetime,
     ) -> None:
         self.factory_method: Callable[..., utils.MaybeAwaitable[T]] = factory_method
         """The method used to create the dependency."""
@@ -64,6 +86,8 @@ class DependencyData(t.Generic[T]):
         """Mapping of param name to dependency expression for any dependencies the factory depends on."""
         self.teardown_method: Callable[[T], utils.MaybeAwaitable[None]] | None = teardown_method
         """The optional method used to teardown the dependency."""
+        self.lifetime: Lifetime = lifetime
+        """The lifetime of the dependency."""
 
 
 def resolve_dependency_expression_for_all_parameters(
@@ -107,6 +131,7 @@ def populate_graph_for_dependency(
     dependency_id: str,
     factory: Callable[..., utils.MaybeAwaitable[t.Any]],
     teardown: Callable[..., utils.MaybeAwaitable[None]] | None,
+    lifetime: Lifetime,
 ) -> None:
     """
     Populate the given dependency graph with the given dependency ID, using the factory to resolve any dependencies
@@ -117,12 +142,13 @@ def populate_graph_for_dependency(
         dependency_id: The ID of the dependency to add.
         factory: The factory to use to create the dependency.
         teardown: The teardown function to use to destroy the dependency.
+        lifetime: The lifetime of the dependency.
 
     Returns:
         :obj:`None`
     """
     factory_dependencies = resolve_dependency_expression_for_all_parameters(factory)
-    dependency_data = DependencyData(factory, factory_dependencies, teardown)
+    dependency_data = DependencyData(factory, factory_dependencies, teardown, lifetime)
 
     graph.replace_node(dependency_id, dependency_data)
     for expr in factory_dependencies.values():

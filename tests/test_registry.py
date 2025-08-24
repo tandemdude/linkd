@@ -18,6 +18,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+from unittest import mock
 
 import pytest
 
@@ -122,3 +123,9 @@ class TestRegistry:
         registry.register_factory(object, f_0)
         registry.register_factory(object, f_1)
         assert ("object", "str") not in registry._graph.out_edges("object")
+
+    def test_cannot_register_prototype_dependency_with_teardown(self) -> None:
+        registry = linkd.Registry()
+
+        with pytest.raises(ValueError):
+            registry.register_factory(object, lambda: object(), teardown=mock.Mock(), lifetime=linkd.Lifetime.PROTOTYPE)  # type: ignore[reportArgumentType]
