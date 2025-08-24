@@ -130,12 +130,32 @@ class Container:
         self._registry._unfreeze(self)
         self._closed = True
 
+    @t.overload
     def add_factory(
         self,
         typ: type[T],
         factory: Callable[..., utils.MaybeAwaitable[T]],
         *,
         teardown: Callable[[T], utils.MaybeAwaitable[None]] | None = None,
+        lifetime: t.Literal[graph.Lifetime.SINGLETON] = graph.Lifetime.SINGLETON,
+    ) -> None: ...
+
+    @t.overload
+    def add_factory(
+        self,
+        typ: type[T],
+        factory: Callable[..., utils.MaybeAwaitable[T]],
+        *,
+        lifetime: t.Literal[graph.Lifetime.PROTOTYPE],
+    ) -> None: ...
+
+    def add_factory(
+        self,
+        typ: type[T],
+        factory: Callable[..., utils.MaybeAwaitable[T]],
+        *,
+        teardown: Callable[[T], utils.MaybeAwaitable[None]] | None = None,
+        lifetime: graph.Lifetime = graph.Lifetime.SINGLETON,
     ) -> None:
         """
         Adds the given factory as an ephemeral dependency to this container. This dependency is only accessible
@@ -144,21 +164,33 @@ class Container:
         Args:
             typ: The type to register the dependency as.
             factory: The factory used to create the dependency.
-            teardown: The teardown function to be called when the container is closed. Defaults to :obj:`None`.
+            teardown: The teardown function to be called when the container is closed. Defaults to :obj:`None`. May
+                only be specified when lifetime is not set to :obj:`~linkd.graph.Lifetime.PROTOTYPE`.
+            lifetime: The lifetime of the dependency. Defaults to :obj:`~linkd.graph.Lifetime.SINGLETON`.
 
         Returns:
             :obj:`None`
 
+        Raises:
+            :obj:`ValueError`: If 'lifetime' is set to 'PROTOTYPE' and 'teardown' is specified.
+            :obj:`linkd.exceptions.CircularDependencyException`: If the factory requires itself as a dependency.
+
         See Also:
             :meth:`linkd.registry.Registry.register_factory` for factory and teardown function spec.
+
+        .. versionadded:: 0.1.0
+            The 'lifetime' parameter.
         """
+        if lifetime is graph.Lifetime.PROTOTYPE and teardown is not None:
+            raise ValueError("'teardown' cannot be used when lifetime is 'Lifetime.PROTOTYPE'")
+
         dependency_id = utils.get_dependency_id(typ)
 
         if dependency_id in self._graph:
             for edge in self._graph.out_edges(dependency_id):
                 self._graph.remove_edge(*edge)
 
-        graph.populate_graph_for_dependency(self._graph, dependency_id, factory, teardown)
+        graph.populate_graph_for_dependency(self._graph, dependency_id, factory, teardown, lifetime)
         self._on_change()
 
     def add_value(
@@ -190,7 +222,7 @@ class Container:
             for edge in self._graph.out_edges(dependency_id):
                 self._graph.remove_edge(*edge)
 
-        self._graph.add_node(dependency_id, DependencyData(lambda: None, {}, teardown))
+        self._graph.add_node(dependency_id, DependencyData(lambda: None, {}, teardown, graph.Lifetime.SINGLETON))
         self._on_change()
 
     async def _get(self, dependency_id: str) -> t.Any:
@@ -225,6 +257,10 @@ class Container:
                 raise exceptions.DependencyNotSatisfiableException("failed evaluating sub-dependency expression") from e
 
         try:
+            # do not store the dependency if it is not of singleton scope
+            if data.lifetime is graph.Lifetime.PROTOTYPE:
+                return await utils.maybe_await(data.factory_method(**injectable_params))
+
             self._instances[dependency_id] = await utils.maybe_await(data.factory_method(**injectable_params))
         except Exception as e:
             raise exceptions.DependencyNotSatisfiableException(

@@ -290,6 +290,20 @@ class TestMethodInjection:
         async with manager.enter_context(linkd.Contexts.ROOT):
             await m()
 
+    @pytest.mark.asyncio
+    async def test_prototype_dependency_different_instance_each_time(self) -> None:
+        manager = linkd.DependencyInjectionManager()
+        manager.registry_for(linkd.Contexts.ROOT).register_factory(
+            object, lambda: object(), lifetime=linkd.Lifetime.PROTOTYPE
+        )
+
+        @linkd.inject
+        async def m(d: object = linkd.INJECTED) -> object:
+            return d
+
+        async with manager.enter_context(linkd.Contexts.ROOT):
+            assert (await m()) is not (await m())
+
 
 class TestDependencyInjectionManager:
     @pytest.mark.asyncio

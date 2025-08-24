@@ -324,6 +324,14 @@ class TestStandaloneContainer:
                 pass
             await c._get("object")
 
+    @pytest.mark.asyncio
+    async def test_cannot_add_prototype_dependency_with_teardown(self) -> None:
+        registry = linkd.Registry()
+
+        with pytest.raises(ValueError):
+            async with linkd.Container(registry) as c:
+                c.add_factory(object, lambda: object(), teardown=mock.Mock(), lifetime=linkd.Lifetime.PROTOTYPE)  # type: ignore[reportArgumentType]
+
 
 class TestContainerWithParent:
     @pytest.mark.asyncio
