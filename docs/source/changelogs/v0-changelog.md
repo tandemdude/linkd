@@ -8,6 +8,13 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 
 <!-- next-changelog -->
 
+## v0.1.0 (2025-08-24)
+### Features
+
+- Implement `SINGLETON` (default) and `PROTOTYPE` dependency lifetimes. ([#28](https://github.com/tandemdude/linkd/issues/28))
+
+----
+
 ## v0.0.10 (2025-07-25)
 ### Features
 
