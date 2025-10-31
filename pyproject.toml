@@ -36,7 +36,7 @@ Changelog = "https://linkd.readthedocs.io/en/latest/changelog.html"
 
 [dependency-groups]
 extensions = [
-    "fastapi[standard]==0.120.2",
+    "fastapi[standard]==0.120.3",
     "redis==7.0.1",
     "quart==0.20.0",
     "sanic==25.3.0"
