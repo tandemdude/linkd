@@ -9,7 +9,7 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 <!-- next-changelog -->
 
 ## v0.2.0 (2025-11-06)
-# Features
+### Features
 
 - Add full support for generator and async generator functions.
 
