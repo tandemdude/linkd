@@ -35,7 +35,9 @@ import string
 import sys
 import textwrap
 import typing as t
+from collections.abc import AsyncGenerator
 from collections.abc import Coroutine
+from collections.abc import Generator
 from collections.abc import Mapping
 from collections.abc import Sequence
 
@@ -58,9 +60,15 @@ if t.TYPE_CHECKING:
     ]
 
 P = t.ParamSpec("P")
+
+Y = t.TypeVar("Y")
+S = t.TypeVar("S")
 R = t.TypeVar("R")
 T = t.TypeVar("T")
+
 AsyncFnT = t.TypeVar("AsyncFnT", bound=t.Callable[..., Coroutine[t.Any, t.Any, t.Any]])
+AsyncGeneratorFnT = t.TypeVar("AsyncGeneratorFnT", bound=t.Callable[..., AsyncGenerator[t.Any, t.Any]])
+
 DependencyExprOrComposed: t.TypeAlias = t.Union[conditions.DependencyExpression[t.Any], type[compose.Compose]]
 
 LOGGER = logging.getLogger(__name__)
@@ -357,7 +365,9 @@ class AutoInjecting:
     """
     Wrapper for a callable that implements dependency injection. When called, resolves the required
     dependencies and calls the original callable. Supports both synchronous and asynchronous functions,
-    however this cannot be called synchronously - synchronous functions will need to be awaited.
+    however this cannot be called synchronously - synchronous functions will need to be awaited. Similarly,
+    generator functions will be transformed into async generators - so ``async for`` will need to be used
+    when calling.
 
     You should generally never have to instantiate this yourself - you should instead use one of the
     decorators that applies this to the target automatically.
@@ -366,7 +376,7 @@ class AutoInjecting:
         :meth:`~inject`
     """
 
-    __slots__ = ("_dependency_func", "_func", "_self")
+    __slots__ = ("__call__", "_dependency_func", "_func", "_is_async_generator", "_is_generator", "_self")
 
     def __init__(
         self,
@@ -378,6 +388,11 @@ class AutoInjecting:
         self._self: t.Any = self_
 
         self._dependency_func = _dependency_func
+
+        self._is_generator = inspect.isgeneratorfunction(func)
+        self._is_async_generator = inspect.isasyncgenfunction(func)
+
+        self.__call__ = self.__call_generator if self._is_generator or self._is_async_generator else self.__call
 
     def __repr__(self) -> str:
         return (
@@ -398,7 +413,7 @@ class AutoInjecting:
 
         return setattr(self._func, key, value)
 
-    async def __call__(self, *args: t.Any, **kwargs: t.Any) -> t.Any:
+    async def _prepare_kwargs(self, args: Sequence[t.Any], kwargs: Mapping[str, t.Any]) -> Mapping[str, t.Any]:
         # codegen the func for the first run
         if self._dependency_func is None:
             self._dependency_func = self._codegen_dependency_func()
@@ -415,9 +430,25 @@ class AutoInjecting:
             func_name = ((self._self.__class__.__name__ + ".") if self._self else "") + self._func.__name__
             LOGGER.debug("calling function %r with resolved dependencies", func_name)
 
+        return new_kwargs
+
+    async def __call(self, *args: t.Any, **kwargs: t.Any) -> t.Any:
+        new_kwargs = await self._prepare_kwargs(args, kwargs)
+
         if self._self:
             return await utils.maybe_await(self._func(self._self, *args, **new_kwargs))
         return await utils.maybe_await(self._func(*args, **new_kwargs))
+
+    async def __call_generator(self, *args: t.Any, **kwargs: t.Any) -> t.Any:
+        new_kwargs = await self._prepare_kwargs(args, kwargs)
+
+        iterator = self._func(self._self, *args, **new_kwargs) if self._self else self._func(*args, **new_kwargs)
+        if self._is_generator:
+            for elem in t.cast("Generator[t.Any, t.Any, t.Any]", iterator):
+                yield elem
+        else:
+            async for elem in t.cast("AsyncGenerator[t.Any, t.Any]", iterator):
+                yield elem
 
     def _codegen_dependency_func(
         self,
@@ -489,8 +520,12 @@ class AutoInjecting:
 @t.overload
 def inject(func: AsyncFnT) -> AsyncFnT: ...
 @t.overload
+def inject(func: AsyncGeneratorFnT) -> AsyncGeneratorFnT: ...
+@t.overload
+def inject(func: Callable[P, Generator[Y, S, t.Any]]) -> Callable[P, AsyncGenerator[Y, S]]: ...
+@t.overload
 def inject(func: Callable[P, R]) -> Callable[P, Coroutine[t.Any, t.Any, R]]: ...
-def inject(func: Callable[P, utils.MaybeAwaitable[R]]) -> Callable[P, Coroutine[t.Any, t.Any, R]]:
+def inject(func: Callable[..., t.Any]) -> Callable[..., t.Any]:
     """
     Decorator that enables dependency injection on the decorated function. If dependency injection
     has been disabled globally then this function does nothing and simply returns the object that was passed in.
@@ -508,5 +543,5 @@ def inject(func: Callable[P, utils.MaybeAwaitable[R]]) -> Callable[P, Coroutine[
         context manager :meth:`~DependencyInjectionManager.enter_context`.
     """
     if DI_ENABLED and not isinstance(func, AutoInjecting):
-        return AutoInjecting(func)  # type: ignore[reportReturnType]
-    return func  # type: ignore[reportReturnType]
+        return AutoInjecting(func)
+    return func

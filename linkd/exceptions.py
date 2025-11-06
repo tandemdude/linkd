@@ -22,6 +22,7 @@ from __future__ import annotations
 
 __all__ = [
     "CircularDependencyException",
+    "CodeGenerationFailedException",
     "ContainerClosedException",
     "DependencyInjectionException",
     "DependencyNotSatisfiableException",

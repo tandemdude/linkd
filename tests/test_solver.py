@@ -19,6 +19,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 import typing as t
+from collections.abc import AsyncGenerator
+from collections.abc import Generator
 from unittest import mock
 
 import pytest
@@ -442,3 +444,30 @@ class TestInjectDecorator:
         with mock.patch.object(solver, "DI_ENABLED", False):
             wrapped = linkd.inject(func := lambda: "foo")
             assert wrapped is func
+
+
+class TestGenerators:
+    @pytest.mark.asyncio
+    async def test_generator_converted_to_async_generator(self) -> None:
+        values = ["foo", "bar", "baz", "bork", "qux"]
+
+        @linkd.inject
+        def foo() -> Generator[str, None, None]:
+            yield from values
+
+        async with linkd.DependencyInjectionManager().enter_context():
+            resolved = [value async for value in foo()]
+            assert resolved == values
+
+    @pytest.mark.asyncio
+    async def test_async_generator_works_correctly(self) -> None:
+        values = ["foo", "bar", "baz", "bork", "qux"]
+
+        @linkd.inject
+        async def foo() -> AsyncGenerator[str, None]:
+            for value in values:
+                yield value
+
+        async with linkd.DependencyInjectionManager().enter_context():
+            resolved = [value async for value in foo()]
+            assert resolved == values
