@@ -43,7 +43,7 @@ extensions = [
 ]
 
 dev = ["nox==2025.10.16"]
-format = ["ruff==0.14.0"]
+format = ["ruff==0.14.4"]
 test = [
     "pytest>=8.3.2, <9",
     "pytest-asyncio>=0.23.8, <1.3",
