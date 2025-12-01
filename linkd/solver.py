@@ -46,6 +46,7 @@ from linkd import conditions
 from linkd import container
 from linkd import context as context_
 from linkd import exceptions
+from linkd import graph
 from linkd import registry
 from linkd import utils
 from linkd.exceptions import CodeGenerationFailedException
@@ -107,6 +108,7 @@ class _NoOpContainer(container.Container):
         factory: Callable[..., utils.MaybeAwaitable[T]],
         *,
         teardown: Callable[[T], utils.MaybeAwaitable[None]] | None = None,
+        lifetime: graph.Lifetime = graph.Lifetime.SINGLETON,
     ) -> None: ...
 
     def add_value(
@@ -392,7 +394,9 @@ class AutoInjecting:
         self._is_generator = inspect.isgeneratorfunction(func)
         self._is_async_generator = inspect.isasyncgenfunction(func)
 
-        self.__call__ = self.__call_generator if self._is_generator or self._is_async_generator else self.__call
+        self.__call__: Callable[..., Awaitable[t.Any]] = (
+            self.__call_generator if self._is_generator or self._is_async_generator else self.__call
+        )
 
     def __repr__(self) -> str:
         return (
