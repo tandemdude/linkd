@@ -64,6 +64,8 @@ class BaseCondition(abc.ABC):
         return cls(item)
 
     def __or__(self, other: t.Any) -> BaseCondition:
+        print(other)
+
         if t.get_origin(other) in (types.UnionType, t.Union):
             self.order = [*self.order, *t.get_args(other)]
         else:
@@ -71,6 +73,8 @@ class BaseCondition(abc.ABC):
         return self
 
     def __ror__(self, other: t.Any) -> BaseCondition:
+        print(other)
+
         if t.get_origin(other) in (types.UnionType, t.Union):
             self.order = [*t.get_args(other), *self.order]
         else:

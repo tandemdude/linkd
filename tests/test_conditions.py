@@ -42,11 +42,11 @@ class TestBaseCondition:
         assert cond.order == [c, int, bool]  # type: ignore[reportUnknownMemberType,reportAttributeAccessIssue]
 
     def test___ror___updates_order_correctly(self) -> None:
-        cond = (int | bool) | (c := linkd.If[str])
-        assert cond.order == [int, bool, c]  # type: ignore[reportUnknownMemberType,reportAttributeAccessIssue]
+        cond = (int | bool) | linkd.If[str]
+        assert [v.inner for v in linkd.DependencyExpression.create(cond)._order] == [int, bool, str]
 
-        cond = int | (c := linkd.If[str])
-        assert cond.order == [int, c]  # type: ignore[reportUnknownMemberType,reportAttributeAccessIssue]
+        cond = int | linkd.If[str]
+        assert [v.inner for v in linkd.DependencyExpression.create(cond)._order] == [int, str]
 
 
 class TestDependencyExpression:
