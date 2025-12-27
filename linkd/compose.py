@@ -67,6 +67,7 @@ class ComposeMeta(type):
             annotations = attrs["__annotations__"]
         elif "__annotate__" in attrs:
             import annotationlib
+
             annotations = annotationlib.call_annotate_function(attrs["__annotate__"], annotationlib.Format.VALUE)
         else:
             raise RuntimeError("Could not resolve annotations for Compose subclass")
