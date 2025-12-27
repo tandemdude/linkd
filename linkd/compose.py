@@ -62,7 +62,16 @@ class ComposeMeta(type):
         if attrs["__module__"] == "linkd.compose" and attrs["__qualname__"] == "Compose":
             return super().__new__(cls, name, bases, attrs)
 
-        generated = cls._codegen_compose_cls(name, attrs["__annotations__"])
+        annotations: dict[str, t.Any]
+        if "__annotations__" in attrs:
+            annotations = attrs["__annotations__"]
+        elif "__annotate__" in attrs:
+            import annotationlib
+            annotations = annotationlib.call_annotate_function(attrs["__annotate__"], annotationlib.Format.VALUE)
+        else:
+            raise RuntimeError("Could not resolve annotations for Compose subclass")
+
+        generated = cls._codegen_compose_cls(name, annotations)
         setattr(generated, _ACTUAL_ATTR, super().__new__(cls, name, bases, attrs))
 
         return generated
