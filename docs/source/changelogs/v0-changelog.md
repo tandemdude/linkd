@@ -8,6 +8,13 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 
 <!-- next-changelog -->
 
+## v0.2.1 (2025-12-27)
+### Miscellaneous
+
+- Add support for Python 3.14.
+
+----
+
 ## v0.2.0 (2025-11-06)
 ### Features
 
