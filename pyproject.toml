@@ -56,7 +56,7 @@ release = ["flit==3.12.0"]
 changelog = ["towncrier==25.8.0"]
 
 docs = [
-    "sphinx>=8.0.2, <9",
+    "sphinx>=8.0.2, <10",
     "furo==2025.9.25",
     "myst-parser>=4.0.0, <5",
     "sphinx-copybutton>=0.5.2, <1",
