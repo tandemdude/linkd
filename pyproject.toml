@@ -69,7 +69,7 @@ docs = [
     {include-group = "extensions"}
 ]
 typecheck = [
-    "pyright==1.1.407",
+    "pyright==1.1.408",
     {include-group = "extensions"},
     {include-group = "test"}
 ]
