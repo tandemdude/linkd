@@ -10,9 +10,6 @@ if t.TYPE_CHECKING:
     from linkd import Container
 
 
-# test that TYPE_CHECKING annotations
-
-
 class TestTypeCheckingAnnotations:
     def test_annotations_are_parsed_when_in_scope(self) -> None:
         async def m(*, foo: str, bar: linkd.Container) -> None: ...
