@@ -32,6 +32,9 @@ from linkd.solver import CANNOT_INJECT
 from linkd.solver import _parse_composed_dependencies
 from linkd.solver import _parse_injectable_params
 
+if t.TYPE_CHECKING:
+    from linkd.container import Container
+
 COMMAND_CONTEXT = linkd.global_context_registry.register("linkd.contexts.command")
 
 
@@ -434,6 +437,19 @@ class TestAutoInjecting:
         foo = Foo()
         assert foo.bar._self is foo  # type: ignore[reportFunctionMemberAccess]
 
+    @pytest.mark.asyncio
+    async def test_codegen_throws_correct_exception_on_syntax_error(self) -> None:
+        with (
+            pytest.raises(linkd.CodeGenerationFailedException),
+            mock.patch.object(solver, "exec", side_effect=SyntaxError),
+        ):
+            async with linkd.DependencyInjectionManager().enter_context():
+
+                @linkd.inject
+                async def m(foo: str = linkd.INJECTED) -> None: ...
+
+                await m()
+
 
 class TestInjectDecorator:
     def test_enables_di_if_di_globally_enabled(self) -> None:
@@ -471,3 +487,21 @@ class TestGenerators:
         async with linkd.DependencyInjectionManager().enter_context():
             resolved = [value async for value in foo()]
             assert resolved == values
+
+
+class TestStringifiedAnnotations:
+    @pytest.mark.asyncio
+    async def test_stringified_annotations_work_when_class_in_scope(self) -> None:
+        @linkd.inject
+        async def m(c: "linkd.Container" = linkd.INJECTED) -> None:
+            assert isinstance(c, linkd.Container)
+
+        async with linkd.DependencyInjectionManager().enter_context():
+            await m()
+
+    @pytest.mark.asyncio
+    async def test_stringified_annotation_ignored_when_positional_only_and_not_in_scope(self) -> None:
+        async def m(s: "Container", /) -> None: ...
+
+        pos, kw = _parse_injectable_params(m)
+        assert pos[0][1] is CANNOT_INJECT and len(kw) == 0

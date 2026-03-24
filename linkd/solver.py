@@ -325,13 +325,16 @@ def _parse_composed_dependencies(cls: type[compose.Compose]) -> dict[str, condit
 def _parse_injectable_params(
     func: Callable[..., t.Any],
 ) -> tuple[list[tuple[str, DependencyExprOrComposed]], dict[str, DependencyExprOrComposed]]:
+    localns = {m: sys.modules[m] for m in utils.ANNOTATION_PARSE_LOCAL_INCLUDE_MODULES}
+
+    def _resolve_annotation(ann: t.Any) -> t.Any:
+        if isinstance(ann, str):
+            return eval(ann, getattr(func, "__globals__", {}), localns)
+        return ann
+
     positional_or_keyword_params: list[tuple[str, DependencyExprOrComposed]] = []
     keyword_only_params: dict[str, DependencyExprOrComposed] = {}
-
-    parameters = inspect.signature(
-        func, locals={m: sys.modules[m] for m in utils.ANNOTATION_PARSE_LOCAL_INCLUDE_MODULES}, eval_str=True
-    ).parameters
-    for parameter in parameters.values():
+    for parameter in inspect.signature(func).parameters.values():
         annotation = parameter.annotation
         if (
             # If the parameter has no annotation
@@ -348,6 +351,7 @@ def _parse_injectable_params(
                 keyword_only_params[parameter.name] = CANNOT_INJECT
             continue
 
+        annotation = _resolve_annotation(annotation)
         if compose._is_compose_class(annotation):
             setattr(annotation, compose._DEPS_ATTR, _parse_composed_dependencies(annotation))
 
