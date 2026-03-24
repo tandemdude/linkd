@@ -121,7 +121,7 @@ class Container:
         if self._parent is not None:
             self._parent._on_change_listeners.remove(self._on_change)
 
-        for dependency_id, instance in self._instances.items():
+        for dependency_id, instance in reversed(self._instances.items()):
             if (node := self._graph.nodes.get(dependency_id)) is None or node.teardown_method is None:
                 continue
 
