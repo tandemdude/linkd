@@ -8,6 +8,17 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 
 <!-- next-changelog -->
 
+## v0.3.0 (2026-03-24)
+### Features
+
+- Explicitly skip annotation parsing for positional-only parameters to prevent errors when using `from __future__ import annotations` or forward references. ([#111](https://github.com/tandemdude/linkd/issues/111))
+
+### Miscellaneous
+
+- Container dependencies are now destroyed in inverse creation order.
+
+----
+
 ## v0.2.1 (2025-12-27)
 ### Miscellaneous
 
