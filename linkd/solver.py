@@ -52,7 +52,6 @@ from linkd import utils
 from linkd.exceptions import CodeGenerationFailedException
 
 if t.TYPE_CHECKING:
-    from collections.abc import AsyncIterator
     from collections.abc import Awaitable
     from collections.abc import Callable
 
@@ -158,7 +157,7 @@ class DependencyInjectionManager:
     @contextlib.asynccontextmanager
     async def enter_context(
         self, context: context_.Context = context_.Contexts.ROOT, /
-    ) -> AsyncIterator[container.Container]:
+    ) -> AsyncGenerator[container.Container]:
         """
         Context manager that ensures a dependency injection context is available for the nested operations.
 
