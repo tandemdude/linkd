@@ -27,42 +27,38 @@ import textwrap
 import typing as t
 
 if t.TYPE_CHECKING:
+    from collections.abc import Callable
+    from collections.abc import Iterable
+
     import typing_extensions as t_ex
     from typing_extensions import dataclass_transform
 else:
     dataclass_transform = lambda: lambda x: x  # noqa: E731
 
-_ACTUAL_ATTR: t.Final[str] = "__linkd_actual__"
+_MARKER_ATTR: t.Final[str] = "__linkd_compose__"
 _DEPS_ATTR: t.Final[str] = "__linkd_deps__"
 
 
 def _is_compose_class(item: t.Any) -> t_ex.TypeIs[type[Compose]]:  # type: ignore[reportUnusedFunction]
-    return hasattr(item, _ACTUAL_ATTR) and inspect.isclass(item)
+    return hasattr(item, _MARKER_ATTR) and inspect.isclass(item)
 
 
 class ComposeMeta(type):
     """Metaclass handling code generation for user-defined :obj:`~Compose` subclasses."""
 
     @staticmethod
-    def _codegen_compose_cls(name: str, attrs: dict[str, t.Any], actual: type[t.Any]) -> type[t.Any]:
-        joined_names = ",".join(attrs)
-        joined_quoted_names = ",".join(f'"{n}"' for n in attrs) + ("," if len(attrs) == 1 else "")
-
+    def _codegen_init(names: Iterable[str]) -> Callable[..., None]:
+        joined_names = ",".join(names)
         lines = [
-            f"class {name}(_linkd_actual):",
-            f"    {_ACTUAL_ATTR} = _linkd_actual",
-            "",
-            f"    __slots__ = ({joined_quoted_names})",
-            "",
-            f"    def __init__(self,{joined_names}):",
-            *(textwrap.indent(f"self.{n} = {n}", " " * 8) for n in attrs),
+            f"def __init__(self,{joined_names}):",
+            *(textwrap.indent(f"self.{n} = {n}", " " * 4) for n in names),
         ]
 
-        exec("\n".join(lines), {"_linkd_actual": actual}, (generated_locals := {}))
-        return t.cast("type[t.Any]", generated_locals[name])
+        exec("\n".join(lines), {}, (generated_locals := {}))
+        return t.cast("Callable[..., None]", generated_locals["__init__"])
 
     def __new__(cls, name: str, bases: tuple[type[t.Any]], attrs: dict[str, t.Any], **kwargs: t.Any) -> type[t.Any]:
-        if (attrs["__module__"] == "linkd.compose" and attrs["__qualname__"] == "Compose") or _ACTUAL_ATTR in attrs:
+        if attrs["__module__"] == "linkd.compose" and attrs["__qualname__"] == "Compose":
             return super().__new__(cls, name, bases, attrs)
 
         annotations: dict[str, t.Any]
@@ -75,7 +71,10 @@ class ComposeMeta(type):
         else:
             raise RuntimeError("Could not resolve annotations for Compose subclass")
 
-        return cls._codegen_compose_cls(name, annotations, super().__new__(cls, name, bases, attrs))
+        attrs["__slots__"] = tuple(annotations)
+        attrs["__init__"] = cls._codegen_init(annotations)
+        attrs[_MARKER_ATTR] = True
+        return super().__new__(cls, name, bases, attrs)
 
 
 @dataclass_transform()
@@ -106,11 +105,11 @@ class Compose(metaclass=ComposeMeta):
     it requires. As with defining dependencies within the function signature, you can use fallback and `If` or `Try`
     syntax within the composed class field annotations.
 
-    .. warning::
-        None of the fields may contain a dependency on a composed class.
+    Methods, classmethods, staticmethods and properties defined on the subclass are preserved and accessible
+    on instances as normal.
 
     .. warning::
-        Composed classes cannot have any defined methods, they will be erased at runtime.
+        None of the fields may contain a dependency on a composed class.
     """
 
     __slots__ = ()
