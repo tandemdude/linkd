@@ -306,14 +306,10 @@ def _parse_composed_dependencies(cls: type[compose.Compose]) -> dict[str, condit
     if (existing := getattr(cls, compose._DEPS_ATTR, None)) is not None:
         return existing
 
-    actual_class = getattr(cls, compose._ACTUAL_ATTR, None)
-    if actual_class is None:
+    if not compose._is_compose_class(cls):
         raise TypeError(f"class {cls} is not a composed dependency")
 
-    actual_class = t.cast("type[t.Any]", actual_class)
-    hints = t.get_type_hints(
-        actual_class, localns={m: sys.modules[m] for m in utils.ANNOTATION_PARSE_LOCAL_INCLUDE_MODULES}
-    )
+    hints = t.get_type_hints(cls, localns={m: sys.modules[m] for m in utils.ANNOTATION_PARSE_LOCAL_INCLUDE_MODULES})
     return {
         name: conditions.DependencyExpression.create(annotation)
         for name, annotation in hints.items()

@@ -18,6 +18,8 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+import pytest
+
 import linkd
 
 
@@ -30,3 +32,60 @@ class TestCompose:
         d = Deps("foo", 1234)
         assert d.foo == "foo"
         assert d.bar == 1234
+
+    def test_compose_preserves_instance_method(self) -> None:
+        class Deps(linkd.Compose):
+            foo: str
+            bar: int
+
+            def joined(self) -> str:
+                return f"{self.foo} {self.bar}"
+
+        d = Deps("hello", 42)
+        assert d.joined() == "hello 42"
+
+    def test_compose_preserves_classmethod(self) -> None:
+        class Deps(linkd.Compose):
+            foo: str
+
+            @classmethod
+            def cls_name(cls) -> str:
+                return cls.__name__
+
+        d = Deps("hi")
+        assert d.cls_name() == "Deps"
+        assert Deps.cls_name() == "Deps"
+
+    def test_compose_preserves_staticmethod(self) -> None:
+        class Deps(linkd.Compose):
+            foo: str
+
+            @staticmethod
+            def shout(value: str) -> str:
+                return value.upper()
+
+        d = Deps("hi")
+        assert d.shout("hi") == "HI"
+        assert Deps.shout("hi") == "HI"
+
+    def test_compose_preserves_property(self) -> None:
+        class Deps(linkd.Compose):
+            foo: str
+
+            @property
+            def loud(self) -> str:
+                return self.foo.upper()
+
+        d = Deps("hi")
+        assert d.loud == "HI"
+
+    def test_compose_retains_slots(self) -> None:
+        class Deps(linkd.Compose):
+            foo: str
+
+            def noop(self) -> None: ...
+
+        d = Deps("hi")
+        assert not hasattr(d, "__dict__")
+        with pytest.raises(AttributeError):
+            d.extra = "nope"  # type: ignore[attr-defined]
