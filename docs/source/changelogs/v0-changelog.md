@@ -8,6 +8,14 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 
 <!-- next-changelog -->
 
+## v0.4.0 (2026-05-25)
+### Features
+
+- Add support for defining methods on `Compose` subclasses. ([#130](https://github.com/tandemdude/linkd/issues/130))
+- Add support for Python 3.15 ([#131](https://github.com/tandemdude/linkd/issues/131))
+
+----
+
 ## v0.3.0 (2026-03-24)
 ### Features
 
