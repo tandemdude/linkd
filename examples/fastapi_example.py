@@ -53,8 +53,10 @@ manager.registry_for(linkd.ext.fastapi.Contexts.REQUEST).register_factory(User, 
 
 @contextlib.asynccontextmanager
 async def lifespan(_: fastapi.FastAPI) -> t.AsyncGenerator[None, t.Any]:
-    yield
-    await manager.close()
+    try:
+        yield
+    finally:
+        await manager.close()
 
 
 app = fastapi.FastAPI(lifespan=lifespan)

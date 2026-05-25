@@ -65,8 +65,10 @@ manager.registry_for(linkd.ext.starlette.Contexts.REQUEST).register_factory(User
 
 @contextlib.asynccontextmanager
 async def lifespan(_: Starlette) -> t.AsyncGenerator[None, t.Any]:
-    yield
-    await manager.close()
+    try:
+        yield
+    finally:
+        await manager.close()
 
 
 @linkd.ext.starlette.inject
