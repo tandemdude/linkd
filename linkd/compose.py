@@ -44,22 +44,25 @@ class ComposeMeta(type):
     """Metaclass handling code generation for user-defined :obj:`~Compose` subclasses."""
 
     @staticmethod
-    def _codegen_compose_cls(name: str, attrs: dict[str, t.Any]) -> type[t.Any]:
+    def _codegen_compose_cls(name: str, attrs: dict[str, t.Any], actual: type[t.Any]) -> type[t.Any]:
         joined_names = ",".join(attrs)
         joined_quoted_names = ",".join(f'"{n}"' for n in attrs) + ("," if len(attrs) == 1 else "")
 
         lines = [
-            f"class {name}:",
+            f"class {name}(_linkd_actual):",
+            f"    {_ACTUAL_ATTR} = _linkd_actual",
+            "",
             f"    __slots__ = ({joined_quoted_names})",
+            "",
             f"    def __init__(self,{joined_names}):",
             *(textwrap.indent(f"self.{n} = {n}", " " * 8) for n in attrs),
         ]
 
-        exec("\n".join(lines), {}, (generated_locals := {}))
+        exec("\n".join(lines), {"_linkd_actual": actual}, (generated_locals := {}))
         return t.cast("type[t.Any]", generated_locals[name])
 
     def __new__(cls, name: str, bases: tuple[type[t.Any]], attrs: dict[str, t.Any], **kwargs: t.Any) -> type[t.Any]:
-        if attrs["__module__"] == "linkd.compose" and attrs["__qualname__"] == "Compose":
+        if (attrs["__module__"] == "linkd.compose" and attrs["__qualname__"] == "Compose") or _ACTUAL_ATTR in attrs:
             return super().__new__(cls, name, bases, attrs)
 
         annotations: dict[str, t.Any]
@@ -72,10 +75,7 @@ class ComposeMeta(type):
         else:
             raise RuntimeError("Could not resolve annotations for Compose subclass")
 
-        generated = cls._codegen_compose_cls(name, annotations)
-        setattr(generated, _ACTUAL_ATTR, super().__new__(cls, name, bases, attrs))
-
-        return generated
+        return cls._codegen_compose_cls(name, annotations, super().__new__(cls, name, bases, attrs))
 
 
 @dataclass_transform()
