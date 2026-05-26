@@ -36,6 +36,8 @@ if t.TYPE_CHECKING:
     import types
     from collections.abc import Callable
 
+    import typing_extensions as t_ex
+
     from linkd import context
 
 T = t.TypeVar("T")
@@ -138,7 +140,7 @@ class Container:
         *,
         teardown: Callable[[T], utils.MaybeAwaitable[None]] | None = None,
         lifetime: t.Literal[graph.Lifetime.SINGLETON] = graph.Lifetime.SINGLETON,
-    ) -> None: ...
+    ) -> t_ex.Self: ...
 
     @t.overload
     def add_factory(
@@ -147,7 +149,7 @@ class Container:
         factory: Callable[..., utils.MaybeAwaitable[T]],
         *,
         lifetime: t.Literal[graph.Lifetime.PROTOTYPE],
-    ) -> None: ...
+    ) -> t_ex.Self: ...
 
     def add_factory(
         self,
@@ -156,7 +158,7 @@ class Container:
         *,
         teardown: Callable[[T], utils.MaybeAwaitable[None]] | None = None,
         lifetime: graph.Lifetime = graph.Lifetime.SINGLETON,
-    ) -> None:
+    ) -> t_ex.Self:
         """
         Adds the given factory as an ephemeral dependency to this container. This dependency is only accessible
         from contexts including this container and will be cleaned up when the container is closed.
@@ -193,13 +195,15 @@ class Container:
         graph.populate_graph_for_dependency(self._graph, dependency_id, factory, teardown, lifetime)
         self._on_change()
 
+        return self
+
     def add_value(
         self,
         typ: type[T],
         value: T,
         *,
         teardown: Callable[[T], utils.MaybeAwaitable[None]] | None = None,
-    ) -> None:
+    ) -> t_ex.Self:
         """
         Adds the given value as an ephemeral dependency to this container. This dependency is only accessible
         from contexts including this container and will be cleaned up when the container is closed.
@@ -224,6 +228,8 @@ class Container:
 
         self._graph.add_node(dependency_id, DependencyData(lambda: None, {}, teardown, graph.Lifetime.SINGLETON))
         self._on_change()
+
+        return self
 
     async def _get(self, dependency_id: str) -> t.Any:
         if self._closed:

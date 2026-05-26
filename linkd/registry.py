@@ -31,6 +31,8 @@ from linkd import utils
 if t.TYPE_CHECKING:
     from collections.abc import Callable
 
+    import typing_extensions as t_ex
+
     from linkd import container
 
 T = t.TypeVar("T")
@@ -83,7 +85,7 @@ class Registry:
         value: T,
         *,
         teardown: Callable[[T], utils.MaybeAwaitable[None]] | None = None,
-    ) -> None:
+    ) -> t_ex.Self:
         """
         Registers a pre-existing value as a dependency.
 
@@ -99,7 +101,7 @@ class Registry:
         Raises:
             :obj:`linkd.exceptions.RegistryFrozenException`: If the registry is frozen.
         """
-        self.register_factory(typ, lambda: value, teardown=teardown)
+        return self.register_factory(typ, lambda: value, teardown=teardown)
 
     @t.overload
     def register_factory(
@@ -109,7 +111,7 @@ class Registry:
         *,
         teardown: Callable[[T], utils.MaybeAwaitable[None]] | None = None,
         lifetime: t.Literal[graph.Lifetime.SINGLETON] = graph.Lifetime.SINGLETON,
-    ) -> None: ...
+    ) -> t_ex.Self: ...
 
     @t.overload
     def register_factory(
@@ -118,7 +120,7 @@ class Registry:
         factory: Callable[..., utils.MaybeAwaitable[T]],
         *,
         lifetime: t.Literal[graph.Lifetime.PROTOTYPE],
-    ) -> None: ...
+    ) -> t_ex.Self: ...
 
     def register_factory(
         self,
@@ -127,7 +129,7 @@ class Registry:
         *,
         teardown: Callable[[T], utils.MaybeAwaitable[None]] | None = None,
         lifetime: graph.Lifetime = graph.Lifetime.SINGLETON,
-    ) -> None:
+    ) -> t_ex.Self:
         """
         Registers a factory for creating a dependency.
 
@@ -166,3 +168,4 @@ class Registry:
                 self._graph.remove_edge(*edge)
 
         graph.populate_graph_for_dependency(self._graph, dependency_id, factory, teardown, lifetime)
+        return self
