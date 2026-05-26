@@ -78,7 +78,7 @@ async def create_user(redis: redis_.Redis) -> quart.Response:
     return quart.jsonify(user.as_dict())
 
 
-# Quart requires route handlers to take and URL parameters as keyword arguments, so unfortunately
+# Quart requires route handlers to take any path parameters as keyword arguments, so unfortunately
 # the unused parameter needs to be included in the below route handlers.
 
 
