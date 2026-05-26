@@ -96,7 +96,7 @@ class Registry:
                 must take exactly one argument - the dependency that is being torn down. Defaults to :obj:`None`.
 
         Returns:
-            :obj:`None`
+            This Registry instance, for method chaining.
 
         Raises:
             :obj:`linkd.exceptions.RegistryFrozenException`: If the registry is frozen.
@@ -143,7 +143,7 @@ class Registry:
             lifetime: The lifetime of the dependency. Defaults to :obj:`~linkd.graph.Lifetime.SINGLETON`.
 
         Returns:
-            :obj:`None`
+            This Registry instance, for method chaining.
 
         Raises:
             :obj:`ValueError`: If 'lifetime' is set to 'PROTOTYPE' and 'teardown' is specified.

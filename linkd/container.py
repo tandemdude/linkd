@@ -171,7 +171,7 @@ class Container:
             lifetime: The lifetime of the dependency. Defaults to :obj:`~linkd.graph.Lifetime.SINGLETON`.
 
         Returns:
-            :obj:`None`
+            This Container instance, for method chaining.
 
         Raises:
             :obj:`ValueError`: If 'lifetime' is set to 'PROTOTYPE' and 'teardown' is specified.
@@ -214,7 +214,7 @@ class Container:
             teardown: The teardown function to be called when the container is closed. Defaults to :obj:`None`.
 
         Returns:
-            :obj:`None`
+            This Container instance, for method chaining.
 
         See Also:
             :meth:`linkd.registry.Registry.register_value` for teardown function spec.
