@@ -53,7 +53,7 @@ class RegistryFrozenException(DependencyInjectionException):
 
 
 class CodeGenerationFailedException(DependencyInjectionException, SyntaxError):
-    """Exception raised code generation of a dependency resolver function failed."""
+    """Exception raised when code generation of a dependency resolver function failed."""
 
     def __init__(self, generated_code: str, exec_globals: dict[str, t.Any]) -> None:
         super().__init__(
