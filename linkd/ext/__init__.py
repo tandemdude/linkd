@@ -26,10 +26,11 @@ If your framework is not listed here, and you would like to see it supported - p
 issue on the GitHub repository.
 """
 
+from linkd.ext import connectrpc
 from linkd.ext import fastapi
 from linkd.ext import grpc
 from linkd.ext import quart
 from linkd.ext import starlette
 from linkd.ext._common import RequestContainer
 
-__all__ = ["RequestContainer", "fastapi", "grpc", "quart", "starlette"]
+__all__ = ["RequestContainer", "connectrpc", "fastapi", "grpc", "quart", "starlette"]

@@ -63,6 +63,7 @@ Linkd currently supports the following frameworks (click to jump to example usag
 - [Quart](https://github.com/tandemdude/linkd/blob/master/examples/quart_example.py)
 - [Starlette](https://github.com/tandemdude/linkd/blob/master/examples/starlette_example.py)
 - gRPC (example pending)
+- ConnectRPC (example pending)
 
 If your framework isn't mentioned here, feel free to open an issue requesting support!
 
