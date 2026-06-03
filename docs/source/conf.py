@@ -62,7 +62,11 @@ templates_path = ["_templates"]
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
-intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+    "protobuf": ("https://googleapis.dev/python/protobuf/latest/", None),
+    "connectrpc": ("https://connectrpc.github.io/connect-python/", None),
+}
 
 # -- Options for HTML output -------------------------------------------------
 
