@@ -8,6 +8,18 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 
 <!-- next-changelog -->
 
+## v0.5.0 (2026-06-03)
+### Features
+
+- Add support for gRPC applications through the `linkd.ext.grpc` submodule. ([#137](https://github.com/tandemdude/linkd/issues/137))
+- Add support for ConnectRPC applications through the `linkd.ext.connectrpc` submodule. ([#138](https://github.com/tandemdude/linkd/issues/138))
+
+### Miscellaneous
+
+- Return `Container` and `Registry` instances from the dependency registration methods to allow for method chaining.
+
+----
+
 ## v0.4.0 (2026-05-25)
 ### Features
 
