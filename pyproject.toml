@@ -39,7 +39,7 @@ Changelog = "https://linkd.readthedocs.io/en/latest/changelog.html"
 [dependency-groups]
 extensions = [
     "fastapi[standard]==0.136.3",
-    "redis==7.4.0",
+    "redis==8.0.0",
     "quart==0.20.0",
     "sanic==25.12.1",
     "grpcio==1.81.0",
