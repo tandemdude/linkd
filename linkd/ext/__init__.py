@@ -1,3 +1,4 @@
+# api_ref_gen::explicit_include::class RequestContainer
 # -*- coding: utf-8 -*-
 # Copyright (c) 2025-present tandemdude
 #
@@ -26,7 +27,9 @@ issue on the GitHub repository.
 """
 
 from linkd.ext import fastapi
+from linkd.ext import grpc
 from linkd.ext import quart
 from linkd.ext import starlette
+from linkd.ext._common import RequestContainer
 
-__all__ = ["fastapi", "quart", "starlette"]
+__all__ = ["RequestContainer", "fastapi", "grpc", "quart", "starlette"]

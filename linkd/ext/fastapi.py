@@ -28,16 +28,14 @@ See the examples directory for a full working application using this module.
 
 from __future__ import annotations
 
-__all__ = ["Contexts", "RequestContainer", "RootContainer", "inject", "use_di_context_middleware"]
+__all__ = ["Contexts", "inject", "use_di_context_middleware"]
 
 import logging
 import typing as t
 
 from linkd import context as _context
 from linkd import solver as _solver
-from linkd.context import RootContainer
 from linkd.ext import _common
-from linkd.ext._common import RequestContainer
 
 if t.TYPE_CHECKING:
     from collections.abc import Callable

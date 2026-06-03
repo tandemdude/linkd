@@ -31,13 +31,50 @@ API_REFERENCES_DIRECTORY = "docs", "source", "api-references"
 # Regex to match special modifiers that can change the output when writing reST
 #
 # Implemented modifiers:
-# - api_ref_gen::ignore - ignores the current file, does not output a reST file
-# - api_ref_gen::add_autodoc_option::<option> - adds a directive to the '.. automodule::' block for this module
+# - api_ref_gen::ignore
+#       - ignores the current file, does not output a reST file
+# - api_ref_gen::add_autodoc_option::<option>
+#       - adds a directive to the '.. automodule::' block for this module
+# - api_ref_gen::explicit_include::<directive> <name>
+#       - explicitly includes the member in a separate '.. auto<directive>:: <name>' block for this module
 MODIFIER_DIRECTIVE_REGEX = re.compile(r"^#\s*api_ref_gen::(?P<directive>\w+)(?:::(?P<parameter>.+))?$")
 
 
 def is_package(path: pathlib.Path) -> bool:
     return path.is_dir() and (path / "__init__.py").is_file()
+
+
+def parse_modifiers(path: pathlib.Path) -> dict[str, list[str | None]]:
+    modifiers: dict[str, list[str | None]] = collections.defaultdict(list)
+    with open(path) as module:
+        content = module.readlines()
+        for line in content[:10]:
+            if match := MODIFIER_DIRECTIVE_REGEX.fullmatch(line.strip()):
+                modifiers[match.group("directive")].append(match.group("parameter"))
+
+    return modifiers
+
+
+def handle_explicit_includes(modifiers: dict[str, list[str | None]], include_header: bool = False) -> list[str]:
+    lines: list[str] = []
+
+    if "explicit_include" not in modifiers:
+        return lines
+
+    if include_header:
+        lines.extend(["++++++++++++++++++", "Additional Members", "++++++++++++++++++"])
+
+    explicit_includes = modifiers["explicit_include"]
+    for include in filter(None, explicit_includes):
+        directive, member = include.split()
+
+        lines.append(f".. auto{directive}:: {member}")
+        for extra_option in set(filter(None, modifiers["add_autodoc_option"])):
+            lines.append(f"    :{extra_option}:")
+
+        lines.append("")
+
+    return lines
 
 
 class Module:
@@ -46,12 +83,7 @@ class Module:
 
     def write(self) -> bool:
         # Find the modifier directives in the file
-        modifiers: dict[str, list[str | None]] = collections.defaultdict(list)
-        with open(self.path) as module:
-            content = module.readlines()
-            for line in content[:10]:
-                if match := MODIFIER_DIRECTIVE_REGEX.fullmatch(line.strip()):
-                    modifiers[match.group("directive")].append(match.group("parameter"))
+        modifiers = parse_modifiers(self.path)
 
         # Skip ignored files
         if "ignore" in modifiers:
@@ -75,6 +107,9 @@ class Module:
             ]
             for extra_option in set(filter(None, modifiers["add_autodoc_option"])):
                 lines.append(f"    :{extra_option}:")
+            lines.append("")
+
+            lines.extend(handle_explicit_includes(modifiers))
 
             fp.write("\n".join(lines))
 
@@ -112,6 +147,10 @@ class Package:
         written_packages: list[Package] = []
         written_modules: list[Module] = []
 
+        modifiers = parse_modifiers(self.path / "__init__.py")
+        if "ignore" in modifiers:
+            return False
+
         self.find_children()
         for package in self.packages:
             if package.write():
@@ -121,7 +160,7 @@ class Package:
                 written_modules.append(module)
 
         # If no pages were written for any subpackage or submodule then we don't need a page for this package
-        if not written_packages and not written_modules:
+        if "explicit_include" not in modifiers and not written_packages and not written_modules:
             return False
 
         parts = self.path.parts
@@ -195,6 +234,8 @@ class Package:
                 if n_last_row := (len(root_members) % n_exported_table_columns):
                     lines.extend(["      -" for _ in range(n_exported_table_columns - n_last_row)])
                 lines.append("")
+
+            lines.extend(handle_explicit_includes(modifiers, include_header=True))
 
             fp.write("\n".join(lines).strip())
 

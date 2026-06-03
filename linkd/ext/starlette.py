@@ -28,16 +28,14 @@ See the examples directory for a full working application using this module.
 
 from __future__ import annotations
 
-__all__ = ["Contexts", "DiContextMiddleware", "RequestContainer", "RootContainer", "inject"]
+__all__ = ["Contexts", "DiContextMiddleware", "inject"]
 
 import functools
 import typing as t
 
 from linkd import context as _context
 from linkd import solver as _solver
-from linkd.context import RootContainer
 from linkd.ext import _common
-from linkd.ext._common import RequestContainer
 
 if t.TYPE_CHECKING:
     from starlette.requests import Request
@@ -85,8 +83,6 @@ try:
 
                 app = Starlette(routes=..., lifetime=..., middleware=middleware)
         """
-
-        __slots__ = ("app", "manager")
 
         def __init__(self, app: ASGIApp, manager: _solver.DependencyInjectionManager) -> None:
             super().__init__(app)
