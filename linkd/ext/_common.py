@@ -36,8 +36,12 @@ InjectedCallableT = t.TypeVar("InjectedCallableT", bound=Callable[..., t.Any])
 
 
 class RequestContainer(container.Container):
+    """
+    Injectable type representing the dependency container for the REQUEST context
+    used by the various extensions.
+    """
+
     __slots__ = ()
-    """Injectable type representing the dependency container for the HTTP request context."""
 
 
 REQUEST_CONTEXT = context.global_context_registry.register("linkd.contexts.http.request", RequestContainer)
