@@ -167,7 +167,7 @@ class DiGraph:
     Implementation of a directional graph datastructure for use as a dependency graph.
 
     Args:
-        initial: The initial graph to use to populate the starting state of the graph. Defaults to ``None``.
+        initial: The initial graph to use to populate the starting state of the graph. Defaults to :obj:`None`.
     """
 
     __slots__ = ("_adjacency", "_nodes")
@@ -187,7 +187,7 @@ class DiGraph:
     @property
     def nodes(self) -> Mapping[str, DependencyData[t.Any] | None]:
         """
-        Mapping of dependency ID to the data for that dependency. If the data is ``None``, it indicates
+        Mapping of dependency ID to the data for that dependency. If the data is :obj:`None`, it indicates
         that the node was added indirectly and that the dependency for that ID has not been directly
         registered to this graph.
         """

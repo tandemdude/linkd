@@ -35,12 +35,18 @@ if t.TYPE_CHECKING:
 else:
     dataclass_transform = lambda: lambda x: x  # noqa: E731
 
-_MARKER_ATTR: t.Final[str] = "__linkd_compose__"
+_COMPOSE_MARKER_ATTR: t.Final[str] = "__linkd_compose__"
+_EXPOSE_MARKER_ATTR: t.Final[str] = "__linkd_expose__"
+
 _DEPS_ATTR: t.Final[str] = "__linkd_deps__"
 
 
 def _is_compose_class(item: t.Any) -> t_ex.TypeIs[type[Compose]]:  # type: ignore[reportUnusedFunction]
-    return hasattr(item, _MARKER_ATTR) and inspect.isclass(item)
+    return hasattr(item, _COMPOSE_MARKER_ATTR) and inspect.isclass(item)
+
+
+def _is_expose_class(item: t.Any) -> t_ex.TypeIs[type[Expose]]:  # type: ignore[reportUnusedFunction]
+    return hasattr(item, _EXPOSE_MARKER_ATTR) and inspect.isclass(item)
 
 
 class ComposeMeta(type):
@@ -58,7 +64,9 @@ class ComposeMeta(type):
         return t.cast("Callable[..., None]", generated_locals["__init__"])
 
     def __new__(cls, name: str, bases: tuple[type[t.Any]], attrs: dict[str, t.Any], **kwargs: t.Any) -> type[t.Any]:
-        if attrs["__module__"] == "linkd.compose" and attrs["__qualname__"] == "Compose":
+        if attrs["__module__"] == "linkd.compose" and (
+            attrs["__qualname__"] == "Compose" or attrs["__qualname__"] == "Expose"
+        ):
             return super().__new__(cls, name, bases, attrs)
 
         annotations: dict[str, t.Any]
@@ -69,11 +77,12 @@ class ComposeMeta(type):
 
             annotations = annotationlib.call_annotate_function(func, annotationlib.Format.VALUE)
         else:
-            raise RuntimeError("Could not resolve annotations for Compose subclass")
+            name = "Compose" if Compose in bases else "Expose"
+            raise RuntimeError(f"Could not resolve annotations for {name} subclass")
 
         attrs["__slots__"] = tuple(annotations)
         attrs["__init__"] = cls._codegen_init(annotations)
-        attrs[_MARKER_ATTR] = True
+        attrs[_COMPOSE_MARKER_ATTR if Compose in bases else _EXPOSE_MARKER_ATTR] = True
         return super().__new__(cls, name, bases, attrs)
 
 
@@ -102,7 +111,7 @@ class Compose(metaclass=ComposeMeta):
             ...
 
     Linkd will automatically try to create an instance of your composed class with all the dependencies that
-    it requires. As with defining dependencies within the function signature, you can use fallback and `If` or `Try`
+    it requires. As with defining dependencies within the function signature, you can use fallback and ``If`` or ``Try``
     syntax within the composed class field annotations.
 
     Methods, classmethods, staticmethods and properties defined on the subclass are preserved and accessible
@@ -112,4 +121,9 @@ class Compose(metaclass=ComposeMeta):
         None of the fields may contain a dependency on a composed class.
     """
 
+    __slots__ = ()
+
+
+@dataclass_transform()
+class Expose(metaclass=ComposeMeta):
     __slots__ = ()

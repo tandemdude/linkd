@@ -164,7 +164,7 @@ class DependencyExpression(t.Generic[T]):
 
     Args:
         order: The sequence of conditions required to resolve the dependency expression.
-        required: Whether the dependency expression is required - i.e. can resolve to ``None``.
+        required: Whether the dependency expression is required - i.e. can resolve to :obj:`None`.
     """
 
     __slots__ = ("_hash", "_order", "_required", "_size")
@@ -189,8 +189,8 @@ class DependencyExpression(t.Generic[T]):
             container: The container to use while satisfying the expression.
 
         Returns:
-            The resolved dependency, or ``None`` if the dependency could not be resolved, and ``required`` was
-            ``True`` upon creation.
+            The resolved dependency, or :obj:`None` if the dependency could not be resolved, and ``required`` was
+            :obj:`True` upon creation.
         """
         # this is necessary to prevent more complicated generated code when parsing parameters
         if container is None:  # type: ignore[reportUnnecessaryComparison]

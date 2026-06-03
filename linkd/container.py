@@ -25,6 +25,7 @@ __all__ = ["Container"]
 import logging
 import typing as t
 
+from linkd import compose
 from linkd import conditions
 from linkd import exceptions
 from linkd import graph
@@ -51,7 +52,7 @@ class Container:
 
     Args:
         registry: The registry of dependencies supply-able by this container.
-        parent: The parent container. Defaults to None.
+        parent: The parent container. Defaults to :obj:`None`.
     """
 
     __slots__ = (
@@ -174,17 +175,21 @@ class Container:
             This Container instance, for method chaining.
 
         Raises:
-            :obj:`ValueError`: If 'lifetime' is set to 'PROTOTYPE' and 'teardown' is specified.
+            :obj:`ValueError`: If ``lifetime`` is set to ``PROTOTYPE`` and ``teardown`` is specified.
+            :obj:`ValueError`: If trying to register a ``Compose`` subclass as a dependency.
             :obj:`linkd.exceptions.CircularDependencyException`: If the factory requires itself as a dependency.
 
         See Also:
             :meth:`linkd.registry.Registry.register_factory` for factory and teardown function spec.
 
         .. versionadded:: 0.1.0
-            The 'lifetime' parameter.
+            The ``lifetime`` parameter.
         """
         if lifetime is graph.Lifetime.PROTOTYPE and teardown is not None:
             raise ValueError("'teardown' cannot be used when lifetime is 'Lifetime.PROTOTYPE'")
+
+        if compose._is_compose_class(typ):
+            raise ValueError("cannot register 'Compose' subclass as a dependency")
 
         dependency_id = utils.get_dependency_id(typ)
 
@@ -216,9 +221,18 @@ class Container:
         Returns:
             This Container instance, for method chaining.
 
+        Raises:
+            :obj:`ValueError`: If trying to register a 'Compose' subclass as a dependency.
+            :obj:`ValueError`: If trying to register an 'Expose' subclass as a dependency.
+
         See Also:
             :meth:`linkd.registry.Registry.register_value` for teardown function spec.
         """
+        if compose._is_compose_class(typ):
+            raise ValueError("cannot register 'Compose' subclass as a dependency")
+        if compose._is_expose_class(typ):
+            raise ValueError("cannot register 'Expose' subclass as a value, use a factory instead")
+
         dependency_id = utils.get_dependency_id(typ)
         self._instances[dependency_id] = value
 
