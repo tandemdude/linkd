@@ -26,7 +26,6 @@ import abc
 import types
 import typing as t
 
-from linkd import compose
 from linkd import exceptions
 from linkd import utils
 
@@ -52,7 +51,7 @@ class BaseCondition(abc.ABC):
         if isinstance(inner, tuple) or inner is None or t.get_origin(inner) in (types.UnionType, t.Union):
             raise ValueError(f"{self.__class__.__name__!r} can only be parameterized by concrete types")
 
-        if compose._is_compose_class(inner):
+        if utils._is_compose_class(inner):
             raise ValueError(f"{self.__class__.__name__!r} cannot be parameterized by composed types")
 
         self.inner: type[t.Any] = inner  # type: ignore[reportAttributeAccessIssue]
@@ -164,7 +163,7 @@ class DependencyExpression(t.Generic[T]):
 
     Args:
         order: The sequence of conditions required to resolve the dependency expression.
-        required: Whether the dependency expression is required - i.e. can resolve to ``None``.
+        required: Whether the dependency expression is required - i.e. can resolve to :obj:`None`.
     """
 
     __slots__ = ("_hash", "_order", "_required", "_size")
@@ -189,8 +188,8 @@ class DependencyExpression(t.Generic[T]):
             container: The container to use while satisfying the expression.
 
         Returns:
-            The resolved dependency, or ``None`` if the dependency could not be resolved, and ``required`` was
-            ``True`` upon creation.
+            The resolved dependency, or :obj:`None` if the dependency could not be resolved, and ``required`` was
+            :obj:`True` upon creation.
         """
         # this is necessary to prevent more complicated generated code when parsing parameters
         if container is None:  # type: ignore[reportUnnecessaryComparison]
@@ -231,7 +230,7 @@ class DependencyExpression(t.Generic[T]):
         Returns:
             The created dependency expression.
         """
-        if compose._is_compose_class(expr):
+        if utils._is_compose_class(expr):
             raise ValueError("cannot create a dependency expression from a composed type")
 
         requested_dependencies: list[BaseCondition] = []
@@ -244,7 +243,7 @@ class DependencyExpression(t.Generic[T]):
             args = expr.order
 
         for arg in args:
-            if compose._is_compose_class(arg):
+            if utils._is_compose_class(arg):
                 raise ValueError("composed types cannot be used within dependency expressions")
 
             if arg is types.NoneType or arg is None:

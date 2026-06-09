@@ -22,6 +22,7 @@ from __future__ import annotations
 
 __all__ = ["Registry"]
 
+import logging
 import typing as t
 
 from linkd import exceptions
@@ -36,6 +37,8 @@ if t.TYPE_CHECKING:
     from linkd import container
 
 T = t.TypeVar("T")
+
+LOGGER = logging.getLogger(__name__)
 
 
 class Registry:
@@ -99,8 +102,12 @@ class Registry:
             This Registry instance, for method chaining.
 
         Raises:
+            :obj:`ValueError`: If trying to register an ``Expose`` subclass as a dependency.
             :obj:`linkd.exceptions.RegistryFrozenException`: If the registry is frozen.
         """
+        if utils._is_expose_class(typ):
+            raise ValueError("cannot register 'Expose' subclass as a value, use a factory instead")
+
         return self.register_factory(typ, lambda: value, teardown=teardown)
 
     @t.overload
@@ -146,26 +153,35 @@ class Registry:
             This Registry instance, for method chaining.
 
         Raises:
-            :obj:`ValueError`: If 'lifetime' is set to 'PROTOTYPE' and 'teardown' is specified.
+            :obj:`ValueError`: If ``lifetime`` is set to ``PROTOTYPE`` and ``teardown`` is specified.
+            :obj:`ValueError`: If trying to register a ``Compose`` subclass as a dependency.
             :obj:`linkd.exceptions.RegistryFrozenException`: If the registry is frozen.
             :obj:`linkd.exceptions.CircularDependencyException`: If the factory requires itself as a dependency.
 
         .. versionadded:: 0.1.0
             The 'lifetime' parameter.
         """
-        if lifetime is graph.Lifetime.PROTOTYPE and teardown is not None:
-            raise ValueError("'teardown' cannot be used when lifetime is 'Lifetime.PROTOTYPE'")
+        if lifetime is graph.Lifetime.PROTOTYPE:
+            if teardown is not None:
+                raise ValueError("'teardown' cannot be used when lifetime is 'Lifetime.PROTOTYPE'")
+            if utils._is_expose_class(typ):
+                raise ValueError("'Expose' subclasses can only be registered with lifetime 'Lifetime.SINGLETON'")
+
+        if utils._is_compose_class(typ):
+            raise ValueError("cannot register 'Compose' subclass as a dependency")
 
         if self._active_containers:
             raise exceptions.RegistryFrozenException
 
-        dependency_id = utils.get_dependency_id(typ)
+        dependency_ids: list[str] = [
+            utils.get_dependency_id(typ)
+            for typ in ([*typ._extract_types().values()] if utils._is_expose_class(typ) else [typ])
+        ]
+        for dependency_id in dependency_ids:
+            if dependency_id in self._graph:
+                for edge in self._graph.out_edges(dependency_id):
+                    self._graph.remove_edge(*edge)
 
-        # We are overriding a previously defined dependency and want to strip the edges, so we don't have
-        # a load of redundant ones - maybe the new version doesn't require the same sub-dependencies
-        if dependency_id in self._graph:
-            for edge in self._graph.out_edges(dependency_id):
-                self._graph.remove_edge(*edge)
+            graph.populate_graph_for_dependency(self._graph, dependency_id, factory, teardown, lifetime)
 
-        graph.populate_graph_for_dependency(self._graph, dependency_id, factory, teardown, lifetime)
         return self

@@ -20,27 +20,23 @@
 # SOFTWARE.
 from __future__ import annotations
 
-__all__ = ["Compose"]
+__all__ = ["Compose", "Expose"]
 
-import inspect
+import sys
 import textwrap
+import types
 import typing as t
+
+from linkd import conditions
+from linkd import utils
 
 if t.TYPE_CHECKING:
     from collections.abc import Callable
     from collections.abc import Iterable
 
-    import typing_extensions as t_ex
     from typing_extensions import dataclass_transform
 else:
     dataclass_transform = lambda: lambda x: x  # noqa: E731
-
-_MARKER_ATTR: t.Final[str] = "__linkd_compose__"
-_DEPS_ATTR: t.Final[str] = "__linkd_deps__"
-
-
-def _is_compose_class(item: t.Any) -> t_ex.TypeIs[type[Compose]]:  # type: ignore[reportUnusedFunction]
-    return hasattr(item, _MARKER_ATTR) and inspect.isclass(item)
 
 
 class ComposeMeta(type):
@@ -58,7 +54,9 @@ class ComposeMeta(type):
         return t.cast("Callable[..., None]", generated_locals["__init__"])
 
     def __new__(cls, name: str, bases: tuple[type[t.Any]], attrs: dict[str, t.Any], **kwargs: t.Any) -> type[t.Any]:
-        if attrs["__module__"] == "linkd.compose" and attrs["__qualname__"] == "Compose":
+        if attrs["__module__"] == "linkd.compose" and (
+            attrs["__qualname__"] == "Compose" or attrs["__qualname__"] == "Expose"
+        ):
             return super().__new__(cls, name, bases, attrs)
 
         annotations: dict[str, t.Any]
@@ -69,11 +67,12 @@ class ComposeMeta(type):
 
             annotations = annotationlib.call_annotate_function(func, annotationlib.Format.VALUE)
         else:
-            raise RuntimeError("Could not resolve annotations for Compose subclass")
+            name = "Compose" if Compose in bases else "Expose"
+            raise RuntimeError(f"Could not resolve annotations for {name} subclass")
 
         attrs["__slots__"] = tuple(annotations)
         attrs["__init__"] = cls._codegen_init(annotations)
-        attrs[_MARKER_ATTR] = True
+        attrs[utils._COMPOSE_MARKER_ATTR if Compose in bases else utils._EXPOSE_MARKER_ATTR] = True
         return super().__new__(cls, name, bases, attrs)
 
 
@@ -83,8 +82,8 @@ class Compose(metaclass=ComposeMeta):
     Class allowing for "composing" of multiple dependencies into a single object, to help declutter
     the signatures of functions that require a large number of dependencies.
 
-    If you have ever used msgspec or pydantic this will feel familiar. To use this feature, simply create a
-    subclass of this class and define fields for the dependencies you wish to use.
+    If you have ever used msgspec, pydantic, or dataclasses this will feel familiar. To use this feature,
+    simply create a subclass of this class and define fields for the dependencies you wish to use.
 
     .. code-block:: python
 
@@ -102,7 +101,7 @@ class Compose(metaclass=ComposeMeta):
             ...
 
     Linkd will automatically try to create an instance of your composed class with all the dependencies that
-    it requires. As with defining dependencies within the function signature, you can use fallback and `If` or `Try`
+    it requires. As with defining dependencies within the function signature, you can use fallback and ``If`` or ``Try``
     syntax within the composed class field annotations.
 
     Methods, classmethods, staticmethods and properties defined on the subclass are preserved and accessible
@@ -113,3 +112,66 @@ class Compose(metaclass=ComposeMeta):
     """
 
     __slots__ = ()
+
+
+@dataclass_transform()
+class Expose(metaclass=ComposeMeta):
+    """
+    Class allowing for "exposing" of multiple dependencies to a registry or container from a single
+    factory method. Could help reduce the length of factory chains, for example when creating database
+    connections, you can have a single factory create both the connection pool, and any repository classes
+    you use to abstract any interactions.
+
+    As with :obj:`linkd.compose.Compose`, if you have ever used a dataclasses-like library this will feel
+    familiar. To use this feature, simply create a subclass of this class and define fields for the dependencies
+    you wish to supply.
+
+    .. code-block:: python
+
+        class ExposedDependencies(linkd.Expose):
+            foo: FooDep
+            bar: BarDep
+            baz: BazDep
+
+    Then, in place of registering factories for all the dependencies separately, you can instead register
+    a factory for your ``Expose`` subclass.
+
+    .. code-block:: python
+
+        async def factory() -> ExposedDependencies:
+            ...
+            return ExposedDependencies(foo, bar, baz)
+
+        registry.register_factory(ExposedDependencies, factory)
+
+    Linkd will automatically unpack the ``Expose`` subclass into individual dependencies, and make them
+    all available to the injection container when any are required. Unlike ``Compose``, you may only expose
+    dependencies of a single concrete type - unions, conditions (``If``/``Try``), or nested ``Expose``
+    dependencies are not permitted and will raise a :obj:`ValueError` at runtime.
+    """
+
+    __slots__ = ()
+
+    @classmethod
+    def _extract_types(cls) -> dict[str, t.Any]:
+        if hasattr(cls, utils._DEPS_ATTR):
+            return getattr(cls, utils._DEPS_ATTR)
+
+        # introspect and store attrs on class on instantiation
+        hints = t.get_type_hints(cls, localns={m: sys.modules[m] for m in utils.ANNOTATION_PARSE_LOCAL_INCLUDE_MODULES})
+        deps = {name: annotation for name, annotation in hints.items() if name in getattr(cls, "__slots__")}
+
+        # ensure annotations are valid; 'Expose' classes may not use presence conditions, nor contain
+        # a union other than 'type | None'. Each attribute must map to exactly one type.
+        for name, dep in deps.items():
+            if t.get_origin(dep) in (types.UnionType, t.Union):
+                raise ValueError(f"'{cls.__name__}.{name}': unions are not permitted as 'Expose' dependencies")
+
+            if isinstance(dep, conditions.BaseCondition):
+                raise ValueError(f"'{cls.__name__}.{name}': conditions are not permitted as 'Expose' dependencies")
+
+            if issubclass(dep, Expose):
+                raise ValueError(f"'{cls.__name__}.{name}': nesting of 'Expose' dependencies is not permitted")
+
+        setattr(cls, utils._DEPS_ATTR, deps)
+        return deps

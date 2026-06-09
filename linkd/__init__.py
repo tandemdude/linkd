@@ -48,6 +48,7 @@ __all__ = [
     "DependencyInjectionManager",
     "DependencyNotSatisfiableException",
     "DiGraph",
+    "Expose",
     "If",
     "Lifetime",
     "Registry",

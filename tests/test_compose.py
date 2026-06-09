@@ -83,9 +83,72 @@ class TestCompose:
         class Deps(linkd.Compose):
             foo: str
 
-            def noop(self) -> None: ...
+        d = Deps("hi")
+        assert not hasattr(d, "__dict__")
+        with pytest.raises(AttributeError):
+            d.extra = "nope"  # type: ignore[attr-defined]
+
+
+class TestExpose:
+    def test_expose_generates_working_class(self) -> None:
+        class Deps(linkd.Compose):
+            foo: str
+            bar: int
+
+        d = Deps("foo", 1234)
+        assert d.foo == "foo"
+        assert d.bar == 1234
+
+    def test_expose_retains_slots(self) -> None:
+        class Deps(linkd.Expose):
+            foo: str
 
         d = Deps("hi")
         assert not hasattr(d, "__dict__")
         with pytest.raises(AttributeError):
             d.extra = "nope"  # type: ignore[attr-defined]
+
+    def test_expose__extract_types_works_for_simple_types(self) -> None:
+        class Baz: ...
+
+        class Deps(linkd.Expose):
+            foo: str
+            bar: int
+            baz: Baz
+
+        deps = Deps._extract_types()
+
+        assert len(deps) == 3
+        assert deps["foo"] is str
+        assert deps["bar"] is int
+        assert deps["baz"] is Baz
+
+    def test_expose__extract_types_errors_for_union_types(self) -> None:
+        class Deps(linkd.Expose):
+            foo: str | int
+
+        with pytest.raises(ValueError):
+            Deps._extract_types()
+
+    def test_expose__extract_types_errors_for_condition_types(self) -> None:
+        class Deps(linkd.Expose):
+            foo: linkd.Try[str]
+
+        with pytest.raises(ValueError):
+            Deps._extract_types()
+
+    def test_expose__extract_types_errors_for_expose_types(self) -> None:
+        class SubDeps(linkd.Expose):
+            foo: str | int
+
+        class Deps(linkd.Expose):
+            subdeps: SubDeps
+
+        with pytest.raises(ValueError):
+            Deps._extract_types()
+
+    def test_expose__extract_types_uses_cached_types_for_second_run(self) -> None:
+        class Deps(linkd.Expose):
+            foo: str
+
+        assert Deps._extract_types() is Deps._extract_types()

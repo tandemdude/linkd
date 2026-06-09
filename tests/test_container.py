@@ -332,6 +332,103 @@ class TestStandaloneContainer:
             async with linkd.Container(registry) as c:
                 c.add_factory(object, lambda: object(), teardown=mock.Mock(), lifetime=linkd.Lifetime.PROTOTYPE)  # type: ignore[reportArgumentType]
 
+    @pytest.mark.asyncio
+    async def test_cannot_register_expose_dependency_as_prototype(self) -> None:
+        class Deps(linkd.Expose):
+            foo: str
+
+        with pytest.raises(ValueError):
+            async with linkd.Container(linkd.Registry()) as c:
+                c.add_factory(Deps, lambda: Deps("foo"), lifetime=linkd.Lifetime.PROTOTYPE)
+
+    @pytest.mark.asyncio
+    async def test_cannot_register_compose_as_dependency(self) -> None:
+        class Deps(linkd.Compose):
+            foo: str
+
+        with pytest.raises(ValueError):
+            async with linkd.Container(linkd.Registry()) as c:
+                c.add_factory(Deps, lambda: Deps("foo"))
+        with pytest.raises(ValueError):
+            async with linkd.Container(linkd.Registry()) as c:
+                c.add_value(Deps, Deps("foo"))
+
+    @pytest.mark.asyncio
+    async def test_cannot_register_expose_dependency_as_value(self) -> None:
+        class Deps(linkd.Expose):
+            foo: str
+
+        with pytest.raises(ValueError):
+            async with linkd.Container(linkd.Registry()) as c:
+                c.add_value(Deps, Deps("foo"))
+
+    @pytest.mark.asyncio
+    async def test_registering_factory_for_existing_instance_overwrites_cache(self) -> None:
+        async with linkd.Container(linkd.Registry()) as c:
+            c.add_value(str, (val := "foo"))
+            assert await c.get(str) is val
+
+            c.add_factory(str, lambda: "bar")
+            assert await c.get(str) == "bar"
+
+    @pytest.mark.asyncio
+    async def test_registering_value_registers_teardown(self) -> None:
+        async with linkd.Container(linkd.Registry()) as c:
+            c.add_value(str, (val := "foo"), teardown=(td := mock.Mock()))
+
+            assert len(c._teardowns) == 1
+
+        td.assert_called_once_with(val)
+
+    @pytest.mark.asyncio
+    async def test_expose_expands_into_multiple_dependencies(self) -> None:
+        class Deps(linkd.Expose):
+            foo: str
+            bar: int
+
+        val1, val2 = "foo", 123
+
+        async with linkd.Container(linkd.Registry()) as c:
+            c.add_factory(Deps, lambda: Deps(val1, val2))
+
+            assert await c.get(str) is val1
+            assert await c.get(int) is val2
+
+    @pytest.mark.asyncio
+    async def test_replaced_dependency_has_teardown_called(self) -> None:
+        async with linkd.Container(linkd.Registry()) as c:
+            c.add_value(str, (val := "foo"), teardown=(td := mock.Mock()))
+            c.add_value(str, "bar")
+
+        td.assert_called_once_with(val)
+
+    @pytest.mark.asyncio
+    async def test_expose_only_registers_teardown_once(self) -> None:
+        class Deps(linkd.Expose):
+            foo: str
+            bar: int
+
+        val1, val2 = "foo", 123
+        deps = Deps(val1, val2)
+
+        async with linkd.Container(linkd.Registry()) as c:
+            c.add_factory(Deps, lambda: deps, teardown=(td := mock.Mock()))
+
+            await c.get(str)
+            await c.get(int)
+
+            assert len(c._teardowns) == 1
+
+        td.assert_called_once_with(deps)
+
+    @pytest.mark.asyncio
+    async def test_on_change_listener_called_when_changed(self) -> None:
+        async with linkd.Container(linkd.Registry()) as c:
+            c._on_change_listeners.add(ls := mock.Mock())
+            c.add_value(str, "foo")
+
+        ls.assert_called_once()
+
 
 class TestContainerWithParent:
     @pytest.mark.asyncio
