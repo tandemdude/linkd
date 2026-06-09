@@ -82,8 +82,8 @@ class Compose(metaclass=ComposeMeta):
     Class allowing for "composing" of multiple dependencies into a single object, to help declutter
     the signatures of functions that require a large number of dependencies.
 
-    If you have ever used msgspec or pydantic this will feel familiar. To use this feature, simply create a
-    subclass of this class and define fields for the dependencies you wish to use.
+    If you have ever used msgspec, pydantic, or dataclasses this will feel familiar. To use this feature,
+    simply create a subclass of this class and define fields for the dependencies you wish to use.
 
     .. code-block:: python
 
@@ -116,6 +116,40 @@ class Compose(metaclass=ComposeMeta):
 
 @dataclass_transform()
 class Expose(metaclass=ComposeMeta):
+    """
+    Class allowing for "exposing" of multiple dependencies to a registry or container from a single
+    factory method. Could help reduce the length of factory chains, for example when creating database
+    connections, you can have a single factory create both the connection pool, and any repository classes
+    you use to abstract any interactions.
+
+    As with :obj:`linkd.compose.Compose`, if you have ever used a dataclasses-like library this will feel
+    familiar. To use this feature, simply create a subclass of this class and define fields for the dependencies
+    you wish to supply.
+
+    .. code-block:: python
+
+        class ExposedDependencies(linkd.Expose):
+            foo: FooDep
+            bar: BarDep
+            baz: BazDep
+
+    Then, in place of registering factories for all the dependencies separately, you can instead register
+    a factory for your ``Expose`` subclass.
+
+    .. code-block:: python
+
+        async def factory() -> ExposedDependencies:
+            ...
+            return ExposedDependencies(foo, bar, baz)
+
+        registry.register_factory(ExposedDependencies, factory)
+
+    Linkd will automatically unpack the ``Expose`` subclass into individual dependencies, and make them
+    all available to the injection container when any are required. Unlike ``Compose``, you may only expose
+    dependencies of a single concrete type - unions, conditions (``If``/``Try``), or nested ``Expose``
+    dependencies are not permitted and will raise a :obj:`ValueError` at runtime.
+    """
+
     __slots__ = ()
 
     @classmethod
