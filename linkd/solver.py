@@ -303,10 +303,10 @@ CANNOT_INJECT: t.Final[t.Any] = utils.Marker("CANNOT_INJECT")
 
 
 def _parse_composed_dependencies(cls: type[compose.Compose]) -> dict[str, conditions.DependencyExpression[t.Any]]:
-    if (existing := getattr(cls, compose._DEPS_ATTR, None)) is not None:
+    if (existing := getattr(cls, utils._DEPS_ATTR, None)) is not None:
         return existing
 
-    if not compose._is_compose_class(cls):
+    if not utils._is_compose_class(cls):
         raise TypeError(f"class {cls} is not a composed dependency")
 
     hints = t.get_type_hints(cls, localns={m: sys.modules[m] for m in utils.ANNOTATION_PARSE_LOCAL_INCLUDE_MODULES})
@@ -347,12 +347,10 @@ def _parse_injectable_params(
             continue
 
         annotation = _resolve_annotation(annotation)
-        if compose._is_compose_class(annotation):
-            setattr(annotation, compose._DEPS_ATTR, _parse_composed_dependencies(annotation))
+        if utils._is_compose_class(annotation):
+            setattr(annotation, utils._DEPS_ATTR, _parse_composed_dependencies(annotation))
 
-        item = (
-            annotation if compose._is_compose_class(annotation) else conditions.DependencyExpression.create(annotation)
-        )
+        item = annotation if utils._is_compose_class(annotation) else conditions.DependencyExpression.create(annotation)
         if parameter.kind is inspect.Parameter.POSITIONAL_OR_KEYWORD:
             positional_or_keyword_params.append((parameter.name, item))
         else:
@@ -472,13 +470,11 @@ class AutoInjecting:
             return ""
 
         def resolver(dependency: DependencyExprOrComposed, refname: str) -> t.Any:
-            if not compose._is_compose_class(dependency):
+            if not utils._is_compose_class(dependency):
                 return f"await {refname}.resolve(container)"
 
             init_params: list[str] = []
-            subdeps = t.cast(
-                "dict[str, conditions.DependencyExpression[t.Any]]", getattr(dependency, compose._DEPS_ATTR)
-            )
+            subdeps = t.cast("dict[str, conditions.DependencyExpression[t.Any]]", getattr(dependency, utils._DEPS_ATTR))
             for subdep_name, subdep in subdeps.items():
                 exec_globals[ident := gen_random_name()] = subdep
                 init_params.append(f"{subdep_name}=await {ident}.resolve(container)")

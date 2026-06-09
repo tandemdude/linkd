@@ -571,3 +571,33 @@ class TestDependencyFallbacks:
 
         async with linkd.Container(registry) as c:
             await c.get(float)
+
+    @pytest.mark.asyncio
+    async def test_cannot_register_expose_dependency_as_prototype(self) -> None:
+        class Deps(linkd.Expose):
+            foo: str
+
+        with pytest.raises(ValueError):
+            async with linkd.Container(linkd.Registry()) as c:
+                c.add_factory(Deps, lambda: Deps("foo"), lifetime=linkd.Lifetime.PROTOTYPE)
+
+    @pytest.mark.asyncio
+    async def test_cannot_register_compose_as_dependency(self) -> None:
+        class Deps(linkd.Compose):
+            foo: str
+
+        with pytest.raises(ValueError):
+            async with linkd.Container(linkd.Registry()) as c:
+                c.add_factory(Deps, lambda: Deps("foo"))
+        with pytest.raises(ValueError):
+            async with linkd.Container(linkd.Registry()) as c:
+                c.add_value(Deps, Deps("foo"))
+
+    @pytest.mark.asyncio
+    async def test_cannot_register_expose_dependency_as_value(self) -> None:
+        class Deps(linkd.Expose):
+            foo: str
+
+        with pytest.raises(ValueError):
+            async with linkd.Container(linkd.Registry()) as c:
+                c.add_value(Deps, Deps("foo"))

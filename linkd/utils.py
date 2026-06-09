@@ -26,6 +26,11 @@ import functools
 import inspect
 import typing as t
 
+if t.TYPE_CHECKING:
+    import typing_extensions as t_ex
+
+    from linkd import compose
+
 T = t.TypeVar("T")
 
 MaybeAwaitable: t.TypeAlias = t.Union[T, t.Coroutine[t.Any, t.Any, T]]
@@ -95,3 +100,16 @@ async def maybe_await(item: MaybeAwaitable[T]) -> T:
     if inspect.iscoroutine(item):
         return await item
     return t.cast("T", item)
+
+
+_COMPOSE_MARKER_ATTR: t.Final[str] = "__linkd_compose__"
+_EXPOSE_MARKER_ATTR: t.Final[str] = "__linkd_expose__"
+_DEPS_ATTR: t.Final[str] = "__linkd_deps__"
+
+
+def _is_compose_class(item: t.Any) -> t_ex.TypeIs[type[compose.Compose]]:  # type: ignore[reportUnusedFunction]
+    return hasattr(item, _COMPOSE_MARKER_ATTR) and inspect.isclass(item)
+
+
+def _is_expose_class(item: t.Any) -> t_ex.TypeIs[type[compose.Expose]]:  # type: ignore[reportUnusedFunction]
+    return hasattr(item, _EXPOSE_MARKER_ATTR) and inspect.isclass(item)

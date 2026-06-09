@@ -22,6 +22,7 @@ from __future__ import annotations
 
 __all__ = ["Container"]
 
+import functools
 import logging
 import typing as t
 
@@ -64,6 +65,7 @@ class Container:
         "_parent",
         "_registry",
         "_tag",
+        "_teardowns",
     )
 
     def __init__(
@@ -79,6 +81,7 @@ class Container:
 
         self._graph: graph.DiGraph = graph.DiGraph(registry._graph)
         self._instances: dict[str, t.Any] = {}
+        self._teardowns: dict[str | type[compose.Expose], Callable[[], utils.MaybeAwaitable[None]]] = {}
 
         self._expression_cache: dict[int, t.Any] = {}
         self._on_change_listeners: set[Callable[[], None]] = set()
@@ -124,11 +127,8 @@ class Container:
         if self._parent is not None:
             self._parent._on_change_listeners.remove(self._on_change)
 
-        for dependency_id, instance in reversed(self._instances.items()):
-            if (node := self._graph.nodes.get(dependency_id)) is None or node.teardown_method is None:
-                continue
-
-            await utils.maybe_await(node.teardown_method(instance))
+        for teardown_method in reversed(self._teardowns.values()):
+            await utils.maybe_await(teardown_method())
 
         self._registry._unfreeze(self)
         self._closed = True
@@ -176,6 +176,8 @@ class Container:
 
         Raises:
             :obj:`ValueError`: If ``lifetime`` is set to ``PROTOTYPE`` and ``teardown`` is specified.
+            :obj:`ValueError`: If ``lifetime`` is set to ``PROTOTYPE`` and the passed type is a subclass
+                of :class:`linkd.compose.Expose`.
             :obj:`ValueError`: If trying to register a ``Compose`` subclass as a dependency.
             :obj:`linkd.exceptions.CircularDependencyException`: If the factory requires itself as a dependency.
 
@@ -185,21 +187,33 @@ class Container:
         .. versionadded:: 0.1.0
             The ``lifetime`` parameter.
         """
-        if lifetime is graph.Lifetime.PROTOTYPE and teardown is not None:
-            raise ValueError("'teardown' cannot be used when lifetime is 'Lifetime.PROTOTYPE'")
+        if lifetime is graph.Lifetime.PROTOTYPE:
+            if teardown is not None:
+                raise ValueError("'teardown' cannot be used when lifetime is 'Lifetime.PROTOTYPE'")
+            if utils._is_expose_class(typ):
+                raise ValueError("'Expose' subclasses can only be registered with lifetime 'Lifetime.SINGLETON'")
 
-        if compose._is_compose_class(typ):
+        if utils._is_compose_class(typ):
             raise ValueError("cannot register 'Compose' subclass as a dependency")
 
-        dependency_id = utils.get_dependency_id(typ)
+        dependency_ids: list[str] = [
+            utils.get_dependency_id(typ)
+            for typ in ([*typ._extract_types().values()] if utils._is_expose_class(typ) else [typ])
+        ]
+        for dependency_id in dependency_ids:
+            if dependency_id in self._instances:
+                LOGGER.debug(
+                    "tried to register factory for %r, but an instance has already been created - ignoring", typ
+                )
+                return self
 
-        if dependency_id in self._graph:
-            for edge in self._graph.out_edges(dependency_id):
-                self._graph.remove_edge(*edge)
+            if dependency_id in self._graph:
+                for edge in self._graph.out_edges(dependency_id):
+                    self._graph.remove_edge(*edge)
 
-        graph.populate_graph_for_dependency(self._graph, dependency_id, factory, teardown, lifetime)
+            graph.populate_graph_for_dependency(self._graph, dependency_id, factory, teardown, lifetime)
+
         self._on_change()
-
         return self
 
     def add_value(
@@ -222,15 +236,15 @@ class Container:
             This Container instance, for method chaining.
 
         Raises:
-            :obj:`ValueError`: If trying to register a 'Compose' subclass as a dependency.
-            :obj:`ValueError`: If trying to register an 'Expose' subclass as a dependency.
+            :obj:`ValueError`: If trying to register a ``Compose`` subclass as a dependency.
+            :obj:`ValueError`: If trying to register an ``Expose`` subclass as a dependency.
 
         See Also:
             :meth:`linkd.registry.Registry.register_value` for teardown function spec.
         """
-        if compose._is_compose_class(typ):
+        if utils._is_compose_class(typ):
             raise ValueError("cannot register 'Compose' subclass as a dependency")
-        if compose._is_expose_class(typ):
+        if utils._is_expose_class(typ):
             raise ValueError("cannot register 'Expose' subclass as a value, use a factory instead")
 
         dependency_id = utils.get_dependency_id(typ)
@@ -239,10 +253,13 @@ class Container:
         if dependency_id in self._graph:
             for edge in self._graph.out_edges(dependency_id):
                 self._graph.remove_edge(*edge)
+            self._teardowns.pop(dependency_id, None)
 
         self._graph.add_node(dependency_id, DependencyData(lambda: None, {}, teardown, graph.Lifetime.SINGLETON))
-        self._on_change()
+        if teardown is not None:
+            self._teardowns[dependency_id] = functools.partial(teardown, value)
 
+        self._on_change()
         return self
 
     async def _get(self, dependency_id: str) -> t.Any:
@@ -281,7 +298,22 @@ class Container:
             if data.lifetime is graph.Lifetime.PROTOTYPE:
                 return await utils.maybe_await(data.factory_method(**injectable_params))
 
-            self._instances[dependency_id] = await utils.maybe_await(data.factory_method(**injectable_params))
+            dep = await utils.maybe_await(data.factory_method(**injectable_params))
+            if isinstance(dep, compose.Expose):
+                # expand into nested deps
+                deps: dict[str, t.Any] = getattr(dep.__class__, utils._DEPS_ATTR, {})
+                for attr, typ in deps.items():
+                    if (d_id := utils.get_dependency_id(typ)) in self._instances:
+                        continue
+
+                    self._instances[d_id] = getattr(dep, attr)
+
+                if data.teardown_method is not None:
+                    self._teardowns[dep.__class__] = functools.partial(data.teardown_method, dep)
+            else:
+                self._instances[dependency_id] = dep
+                if data.teardown_method is not None:
+                    self._teardowns[dependency_id] = functools.partial(data.teardown_method, dep)
         except Exception as e:
             raise exceptions.DependencyNotSatisfiableException(
                 f"could not create dependency {dependency_id!r} - factory raised exception"

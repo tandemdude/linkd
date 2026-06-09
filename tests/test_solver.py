@@ -26,8 +26,8 @@ from unittest import mock
 import pytest
 
 import linkd
-from linkd import compose
 from linkd import solver
+from linkd import utils
 from linkd.solver import CANNOT_INJECT
 from linkd.solver import _parse_composed_dependencies
 from linkd.solver import _parse_injectable_params
@@ -101,7 +101,7 @@ class TestComposedTypeParsing:
         assert "foo" in deps and "bar" in deps
 
         # check that it reuses the cached value
-        setattr(Deps, compose._DEPS_ATTR, deps)
+        setattr(Deps, utils._DEPS_ATTR, deps)
         assert _parse_composed_dependencies(Deps) is deps
 
     def test_errors_for_non_composed_type(self) -> None:

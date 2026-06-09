@@ -20,33 +20,23 @@
 # SOFTWARE.
 from __future__ import annotations
 
-__all__ = ["Compose"]
+__all__ = ["Compose", "Expose"]
 
-import inspect
+import sys
 import textwrap
+import types
 import typing as t
+
+from linkd import conditions
+from linkd import utils
 
 if t.TYPE_CHECKING:
     from collections.abc import Callable
     from collections.abc import Iterable
 
-    import typing_extensions as t_ex
     from typing_extensions import dataclass_transform
 else:
     dataclass_transform = lambda: lambda x: x  # noqa: E731
-
-_COMPOSE_MARKER_ATTR: t.Final[str] = "__linkd_compose__"
-_EXPOSE_MARKER_ATTR: t.Final[str] = "__linkd_expose__"
-
-_DEPS_ATTR: t.Final[str] = "__linkd_deps__"
-
-
-def _is_compose_class(item: t.Any) -> t_ex.TypeIs[type[Compose]]:  # type: ignore[reportUnusedFunction]
-    return hasattr(item, _COMPOSE_MARKER_ATTR) and inspect.isclass(item)
-
-
-def _is_expose_class(item: t.Any) -> t_ex.TypeIs[type[Expose]]:  # type: ignore[reportUnusedFunction]
-    return hasattr(item, _EXPOSE_MARKER_ATTR) and inspect.isclass(item)
 
 
 class ComposeMeta(type):
@@ -82,7 +72,7 @@ class ComposeMeta(type):
 
         attrs["__slots__"] = tuple(annotations)
         attrs["__init__"] = cls._codegen_init(annotations)
-        attrs[_COMPOSE_MARKER_ATTR if Compose in bases else _EXPOSE_MARKER_ATTR] = True
+        attrs[utils._COMPOSE_MARKER_ATTR if Compose in bases else utils._EXPOSE_MARKER_ATTR] = True
         return super().__new__(cls, name, bases, attrs)
 
 
@@ -127,3 +117,24 @@ class Compose(metaclass=ComposeMeta):
 @dataclass_transform()
 class Expose(metaclass=ComposeMeta):
     __slots__ = ()
+
+    @classmethod
+    def _extract_types(cls) -> dict[str, t.Any]:
+        if hasattr(cls, utils._DEPS_ATTR):
+            return getattr(cls, utils._DEPS_ATTR)
+
+        # introspect and store attrs on class on instantiation
+        hints = t.get_type_hints(cls, localns={m: sys.modules[m] for m in utils.ANNOTATION_PARSE_LOCAL_INCLUDE_MODULES})
+        deps = {name: annotation for name, annotation in hints.items() if name in getattr(cls, "__slots__")}
+
+        # ensure annotations are valid; 'Expose' classes may not use presence conditions, nor contain
+        # a union other than 'type | None'. Each attribute must map to exactly one type.
+        for name, dep in deps.items():
+            if t.get_origin(dep) in (types.UnionType, t.Union):
+                raise ValueError(f"'{cls.__name__}.{name}': unions are not permitted as 'Expose' dependencies")
+
+            if isinstance(dep, conditions.BaseCondition):
+                raise ValueError(f"'{cls.__name__}.{name}': conditions are not permitted as 'Expose' dependencies")
+
+        setattr(cls, utils._DEPS_ATTR, deps)
+        return deps

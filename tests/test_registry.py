@@ -129,3 +129,30 @@ class TestRegistry:
 
         with pytest.raises(ValueError):
             registry.register_factory(object, lambda: object(), teardown=mock.Mock(), lifetime=linkd.Lifetime.PROTOTYPE)  # type: ignore[reportArgumentType]
+
+    def test_cannot_register_expose_dependency_as_prototype(self) -> None:
+        registry = linkd.Registry()
+
+        class Deps(linkd.Expose):
+            foo: str
+
+        with pytest.raises(ValueError):
+            registry.register_factory(Deps, lambda: Deps("foo"), lifetime=linkd.Lifetime.PROTOTYPE)
+
+    def test_cannot_register_compose_as_dependency(self) -> None:
+        registry = linkd.Registry()
+
+        class Deps(linkd.Compose):
+            foo: str
+
+        with pytest.raises(ValueError):
+            registry.register_factory(Deps, lambda: Deps("foo"))
+
+    def test_cannot_register_expose_dependency_as_value(self) -> None:
+        registry = linkd.Registry()
+
+        class Deps(linkd.Expose):
+            foo: str
+
+        with pytest.raises(ValueError):
+            registry.register_value(Deps, Deps("foo"))
