@@ -136,5 +136,8 @@ class Expose(metaclass=ComposeMeta):
             if isinstance(dep, conditions.BaseCondition):
                 raise ValueError(f"'{cls.__name__}.{name}': conditions are not permitted as 'Expose' dependencies")
 
+            if issubclass(dep, Expose):
+                raise ValueError(f"'{cls.__name__}.{name}': nesting of 'Expose' dependencies is not permitted")
+
         setattr(cls, utils._DEPS_ATTR, deps)
         return deps

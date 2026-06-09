@@ -137,6 +137,16 @@ class TestExpose:
         with pytest.raises(ValueError):
             Deps._extract_types()
 
+    def test_expose__extract_types_errors_for_expose_types(self) -> None:
+        class SubDeps(linkd.Expose):
+            foo: str | int
+
+        class Deps(linkd.Expose):
+            subdeps: SubDeps
+
+        with pytest.raises(ValueError):
+            Deps._extract_types()
+
     def test_expose__extract_types_uses_cached_types_for_second_run(self) -> None:
         class Deps(linkd.Expose):
             foo: str

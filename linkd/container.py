@@ -63,6 +63,7 @@ class Container:
         "_instances",
         "_on_change_listeners",
         "_parent",
+        "_registered_expose_teardowns",
         "_registry",
         "_tag",
         "_teardowns",
@@ -81,7 +82,9 @@ class Container:
 
         self._graph: graph.DiGraph = graph.DiGraph(registry._graph)
         self._instances: dict[str, t.Any] = {}
-        self._teardowns: dict[str | type[compose.Expose], Callable[[], utils.MaybeAwaitable[None]]] = {}
+
+        self._teardowns: list[Callable[[], utils.MaybeAwaitable[None]]] = []
+        self._registered_expose_teardowns: set[type[compose.Expose]] = set()
 
         self._expression_cache: dict[int, t.Any] = {}
         self._on_change_listeners: set[Callable[[], None]] = set()
@@ -127,7 +130,7 @@ class Container:
         if self._parent is not None:
             self._parent._on_change_listeners.remove(self._on_change)
 
-        for teardown_method in reversed(self._teardowns.values()):
+        for teardown_method in reversed(self._teardowns):
             await utils.maybe_await(teardown_method())
 
         self._registry._unfreeze(self)
@@ -202,10 +205,8 @@ class Container:
         ]
         for dependency_id in dependency_ids:
             if dependency_id in self._instances:
-                LOGGER.debug(
-                    "tried to register factory for %r, but an instance has already been created - ignoring", typ
-                )
-                return self
+                LOGGER.debug("evicting cached dependency of type '%r' as replacement was registered", typ)
+                self._instances.pop(dependency_id, None)
 
             if dependency_id in self._graph:
                 for edge in self._graph.out_edges(dependency_id):
@@ -253,11 +254,10 @@ class Container:
         if dependency_id in self._graph:
             for edge in self._graph.out_edges(dependency_id):
                 self._graph.remove_edge(*edge)
-            self._teardowns.pop(dependency_id, None)
 
         self._graph.add_node(dependency_id, DependencyData(lambda: None, {}, teardown, graph.Lifetime.SINGLETON))
         if teardown is not None:
-            self._teardowns[dependency_id] = functools.partial(teardown, value)
+            self._teardowns.append(functools.partial(teardown, value))
 
         self._on_change()
         return self
@@ -301,19 +301,17 @@ class Container:
             dep = await utils.maybe_await(data.factory_method(**injectable_params))
             if isinstance(dep, compose.Expose):
                 # expand into nested deps
-                deps: dict[str, t.Any] = getattr(dep.__class__, utils._DEPS_ATTR, {})
+                deps: dict[str, t.Any] = getattr((expose_cls := dep.__class__), utils._DEPS_ATTR, {})
                 for attr, typ in deps.items():
-                    if (d_id := utils.get_dependency_id(typ)) in self._instances:
-                        continue
+                    self._instances[utils.get_dependency_id(typ)] = getattr(dep, attr)
 
-                    self._instances[d_id] = getattr(dep, attr)
-
-                if data.teardown_method is not None:
-                    self._teardowns[dep.__class__] = functools.partial(data.teardown_method, dep)
+                if data.teardown_method is not None and expose_cls not in self._registered_expose_teardowns:
+                    self._teardowns.append(functools.partial(data.teardown_method, dep))
+                    self._registered_expose_teardowns.add(expose_cls)
             else:
                 self._instances[dependency_id] = dep
                 if data.teardown_method is not None:
-                    self._teardowns[dependency_id] = functools.partial(data.teardown_method, dep)
+                    self._teardowns.append(functools.partial(data.teardown_method, dep))
         except Exception as e:
             raise exceptions.DependencyNotSatisfiableException(
                 f"could not create dependency {dependency_id!r} - factory raised exception"
