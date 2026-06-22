@@ -97,7 +97,19 @@ class BaseCondition(abc.ABC):
         return " | ".join(parts)
 
     @abc.abstractmethod
-    async def _get_from(self, container: container_.Container) -> tuple[bool, t.Any]: ...
+    async def _get_from(self, container: container_.Container) -> tuple[bool, t.Any, bool]:
+        """
+        Get the dependency that this condition represents from the given container.
+
+        Args:
+            container: The container to resolve the dependency from.
+
+        Returns:
+            Tuple of ``(succeeded, dependency, cacheable)``. ``succeeded`` represents whether the
+            dependency was resolved successfully; ``dependency`` is the resolved dependency; ``cacheable`` indicates
+            whether the dependency is safe to save to the container expression cache - generally :obj:`False`
+            when the dependency was of type ``PROTOTYPE``.
+        """
 
 
 class _If(BaseCondition):
@@ -125,10 +137,11 @@ class _If(BaseCondition):
 
     __slots__ = ()
 
-    async def _get_from(self, container: container_.Container) -> tuple[bool, t.Any]:
+    async def _get_from(self, container: container_.Container) -> tuple[bool, t.Any, bool]:
         if self.inner_id in container:
-            return True, await container._get(self.inner_id)
-        return False, None
+            found, cacheable = await container._get(self.inner_id)
+            return True, found, cacheable
+        return False, None, True
 
 
 class _Try(BaseCondition):
@@ -149,11 +162,12 @@ class _Try(BaseCondition):
 
     __slots__ = ()
 
-    async def _get_from(self, container: container_.Container) -> tuple[bool, t.Any]:
+    async def _get_from(self, container: container_.Container) -> tuple[bool, t.Any, bool]:
         try:
-            return True, await container._get(self.inner_id)
+            found, cacheable = await container._get(self.inner_id)
+            return True, found, cacheable
         except exceptions.DependencyInjectionException:
-            return False, None
+            return False, None, True
 
 
 class DependencyExpression(t.Generic[T]):
@@ -195,23 +209,23 @@ class DependencyExpression(t.Generic[T]):
         if container is None:  # type: ignore[reportUnnecessaryComparison]
             raise exceptions.DependencyNotSatisfiableException("no DI context is available")
 
-        # TODO - revisit this implementation later to take into account prototype dependencies
-        # if self._hash in container._expression_cache:
-        #     return container._expression_cache[self._hash]
+        if self._hash in container._expression_cache:
+            return container._expression_cache[self._hash]
 
         if self._required and self._size == 1:
-            # container._expression_cache[self._hash] = (dep := await container._get(self._order[0].inner_id))
-            # return dep
-            return await container._get(self._order[0].inner_id)
+            dep, cacheable = await container._get(self._order[0].inner_id)
+            if cacheable:
+                container._expression_cache[self._hash] = dep
+            return dep
 
         for dependency in self._order:
-            succeeded, found = await dependency._get_from(container)
-            if succeeded:
-                # container._expression_cache[self._hash] = found
+            succeeded, found, cacheable = await dependency._get_from(container)
+            if succeeded and cacheable:
+                container._expression_cache[self._hash] = found
                 return found
 
         if not self._required:
-            # container._expression_cache[self._hash] = None
+            container._expression_cache[self._hash] = None
             return None
 
         raise exceptions.DependencyNotSatisfiableException(f"no dependencies can satisfy the requested type - '{self}'")

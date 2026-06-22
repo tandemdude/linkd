@@ -262,13 +262,13 @@ class Container:
         self._on_change()
         return self
 
-    async def _get(self, dependency_id: str) -> t.Any:
+    async def _get(self, dependency_id: str) -> tuple[t.Any, bool]:
         if self._closed:
             raise exceptions.ContainerClosedException("the container is closed")
 
         # TODO - look into whether locking is necessary - how likely are we to have race conditions
         if (existing := self._instances.get(dependency_id)) is not None:
-            return existing
+            return existing, True
 
         if (data := self._graph.nodes.get(dependency_id)) is None:
             if self._parent is None:
@@ -296,7 +296,7 @@ class Container:
         try:
             # do not store the dependency if it is not of singleton scope
             if data.lifetime is graph.Lifetime.PROTOTYPE:
-                return await utils.maybe_await(data.factory_method(**injectable_params))
+                return await utils.maybe_await(data.factory_method(**injectable_params)), False
 
             dep = await utils.maybe_await(data.factory_method(**injectable_params))
             if isinstance(dep, compose.Expose):
@@ -317,7 +317,7 @@ class Container:
                 f"could not create dependency {dependency_id!r} - factory raised exception"
             ) from e
 
-        return self._instances[dependency_id]
+        return self._instances[dependency_id], True
 
     @t.overload
     async def get(self, type_: type[T], /) -> T: ...
