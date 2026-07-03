@@ -8,6 +8,17 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 
 <!-- next-changelog -->
 
+## v0.6.0 (2026-07-03)
+### Features
+
+- Add `Expose` class to allow factory methods to provide multiple dependencies. ([#141](https://github.com/tandemdude/linkd/issues/141))
+
+### Miscellaneous
+
+- Minor increase in DI performance across multiple calls within the same injection context.
+
+----
+
 ## v0.5.0 (2026-06-03)
 ### Features
 
