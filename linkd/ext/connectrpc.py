@@ -139,7 +139,7 @@ class DiInterceptor:
         ):
             rc.add_value(self._rc_type, ctx).add_value(self._m_type, request)
             async for res in call_next(request, ctx):
-                yield res
+                yield res  # noqa: ASYNC119
 
     async def intercept_bidi_stream(
         self,
@@ -153,7 +153,7 @@ class DiInterceptor:
         ):
             rc.add_value(self._rc_type, ctx).add_value(self._rc_type, request)
             async for res in call_next(request, ctx):
-                yield res
+                yield res  # noqa: ASYNC119
 
 
 if t.TYPE_CHECKING:

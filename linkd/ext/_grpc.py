@@ -127,7 +127,7 @@ class DiInterceptor(grpc_aio.ServerInterceptor):
             container.add_value(grpc.ServicerContext, context)
 
             async for result in behaviour(request, context):
-                yield result
+                yield result  # noqa: ASYNC119
 
     async def __stream_stream(
         self,
@@ -143,7 +143,7 @@ class DiInterceptor(grpc_aio.ServerInterceptor):
             container.add_value(grpc.ServicerContext, context)
 
             async for result in behaviour(request_iterator, context):
-                yield result
+                yield result  # noqa: ASYNC119
 
     async def intercept_service(
         self,
