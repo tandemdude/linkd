@@ -8,6 +8,13 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 
 <!-- next-changelog -->
 
+## v0.6.1 (2026-07-08)
+### Miscellaneous
+
+- Cleanup stray print statements that snuck in during testing.
+
+----
+
 ## v0.6.0 (2026-07-03)
 ### Features
 
