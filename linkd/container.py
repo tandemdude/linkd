@@ -22,6 +22,8 @@ from __future__ import annotations
 
 __all__ = ["Container"]
 
+import asyncio
+import collections
 import functools
 import logging
 import typing as t
@@ -61,6 +63,7 @@ class Container:
         "_expression_cache",
         "_graph",
         "_instances",
+        "_locks",
         "_on_change_listeners",
         "_parent",
         "_registered_expose_teardowns",
@@ -88,6 +91,7 @@ class Container:
 
         self._expression_cache: dict[int, t.Any] = {}
         self._on_change_listeners: set[Callable[[], None]] = set()
+        self._locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
 
         self.add_value(Container, self)
         if self._parent is not None:
@@ -262,11 +266,21 @@ class Container:
         self._on_change()
         return self
 
+    async def _resolve_factory_params(self, data: DependencyData[t.Any]) -> dict[str, t.Any]:
+        injectable_params: dict[str, t.Any] = {}
+        for param_name, expr in data.factory_params.items():
+            LOGGER.debug("evaluating expression %r for factory parameter %r", expr, param_name)
+            try:
+                injectable_params[param_name] = await expr.resolve(self)
+            except exceptions.DependencyNotSatisfiableException as e:
+                raise exceptions.DependencyNotSatisfiableException("failed evaluating sub-dependency expression") from e
+
+        return injectable_params
+
     async def _get(self, dependency_id: str) -> tuple[t.Any, bool]:
         if self._closed:
             raise exceptions.ContainerClosedException("the container is closed")
 
-        # TODO - look into whether locking is necessary - how likely are we to have race conditions
         if (existing := self._instances.get(dependency_id)) is not None:
             return existing, True
 
@@ -279,43 +293,45 @@ class Container:
             LOGGER.debug("dependency %r not provided by this container - checking parent", dependency_id)
             return await self._parent._get(dependency_id)
 
-        children = self._graph.children(dependency_id)
-        if dependency_id in children:
+        if dependency_id in self._graph.children(dependency_id):
             raise exceptions.CircularDependencyException(
                 f"cannot provide {dependency_id!r} - circular dependency found"
             )
 
-        injectable_params: dict[str, t.Any] = {}
-        for param_name, expr in data.factory_params.items():
-            LOGGER.debug("evaluating expression %r for factory parameter %r", expr, param_name)
+        if data.lifetime is graph.Lifetime.PROTOTYPE:
+            injectable_params = await self._resolve_factory_params(data)
             try:
-                injectable_params[param_name] = await expr.resolve(self)
-            except exceptions.DependencyNotSatisfiableException as e:
-                raise exceptions.DependencyNotSatisfiableException("failed evaluating sub-dependency expression") from e
-
-        try:
-            # do not store the dependency if it is not of singleton scope
-            if data.lifetime is graph.Lifetime.PROTOTYPE:
                 return await utils.maybe_await(data.factory_method(**injectable_params)), False
+            except Exception as e:
+                raise exceptions.DependencyNotSatisfiableException(
+                    f"could not create dependency {dependency_id!r} - factory raised exception"
+                ) from e
 
-            dep = await utils.maybe_await(data.factory_method(**injectable_params))
-            if isinstance(dep, compose.Expose):
-                # expand into nested deps
-                deps: dict[str, t.Any] = getattr((expose_cls := dep.__class__), utils._DEPS_ATTR, {})
-                for attr, typ in deps.items():
-                    self._instances[utils.get_dependency_id(typ)] = getattr(dep, attr)
+        async with self._locks[dependency_id]:
+            # maybe we had to wait for creation and the dependency has now been cached
+            if (existing := self._instances.get(dependency_id)) is not None:
+                return existing, True
 
-                if data.teardown_method is not None and expose_cls not in self._registered_expose_teardowns:
-                    self._teardowns.append(functools.partial(data.teardown_method, dep))
-                    self._registered_expose_teardowns.add(expose_cls)
-            else:
-                self._instances[dependency_id] = dep
-                if data.teardown_method is not None:
-                    self._teardowns.append(functools.partial(data.teardown_method, dep))
-        except Exception as e:
-            raise exceptions.DependencyNotSatisfiableException(
-                f"could not create dependency {dependency_id!r} - factory raised exception"
-            ) from e
+            injectable_params = await self._resolve_factory_params(data)
+            try:
+                dep = await utils.maybe_await(data.factory_method(**injectable_params))
+                if isinstance(dep, compose.Expose):
+                    # expand into nested deps
+                    deps: dict[str, t.Any] = getattr((expose_cls := dep.__class__), utils._DEPS_ATTR, {})
+                    for attr, typ in deps.items():
+                        self._instances[utils.get_dependency_id(typ)] = getattr(dep, attr)
+
+                    if data.teardown_method is not None and expose_cls not in self._registered_expose_teardowns:
+                        self._teardowns.append(functools.partial(data.teardown_method, dep))
+                        self._registered_expose_teardowns.add(expose_cls)
+                else:
+                    self._instances[dependency_id] = dep
+                    if data.teardown_method is not None:
+                        self._teardowns.append(functools.partial(data.teardown_method, dep))
+            except Exception as e:
+                raise exceptions.DependencyNotSatisfiableException(
+                    f"could not create dependency {dependency_id!r} - factory raised exception"
+                ) from e
 
         return self._instances[dependency_id], True
 
