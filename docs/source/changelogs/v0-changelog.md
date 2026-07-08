@@ -8,6 +8,13 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 
 <!-- next-changelog -->
 
+## v0.6.2 (2026-07-08)
+### Bugfixes
+
+- Fix factory possibly being called multiple times if many coroutines request the dependency at the same time
+
+----
+
 ## v0.6.1 (2026-07-08)
 ### Miscellaneous
 
