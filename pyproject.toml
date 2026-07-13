@@ -47,7 +47,7 @@ extensions = [
     "connectrpc==0.11.0"
 ]
 
-dev = ["nox==2026.4.10"]
+dev = ["nox==2026.7.11"]
 format = ["ruff==0.15.21"]
 test = [
     "pytest>=8.3.2, <10",
