@@ -42,7 +42,7 @@ extensions = [
     "redis==8.0.1",
     "quart==0.20.0",
     "sanic==25.12.1",
-    "grpcio==1.82.1",
+    "grpcio==1.83.0",
     "protobuf==7.35.1",
     "connectrpc==0.11.0"
 ]
