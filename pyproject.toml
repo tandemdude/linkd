@@ -1,5 +1,5 @@
 [build-system]
-requires = ["flit_core >=3.11,<5"]
+requires = ["flit_core >=4.0,<5"]
 build-backend = "flit_core.buildapi"
 
 [project]
@@ -56,7 +56,7 @@ test = [
     "pytest-randomly>=3.15.0, <5"
 ]
 slotscheck = ["slotscheck>=0.19.0, <1", {include-group = "extensions"}]
-release = ["flit==3.12.0"]
+release = ["flit>=4.0,<5"]
 changelog = ["towncrier==25.8.0"]
 
 docs = [
