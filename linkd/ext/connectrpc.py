@@ -96,10 +96,29 @@ class DiInterceptor:
         self._manager = manager
 
         from connectrpc.request import RequestContext
-        from google.protobuf import message
 
         self._rc_type: t.Final[type[RequestContext[t.Any, t.Any]]] = RequestContext
-        self._m_type: t.Final[type[message.Message]] = message.Message
+        # Message type will be set the first time a request is made
+        self._m_type: type[t.Any] | None = None
+
+    def _resolve_m_type(self, from_: REQ) -> type[REQ]:
+        if self._m_type is not None:
+            return self._m_type
+
+        try:
+            from protobuf import Message
+
+            if isinstance(from_, Message):
+                return Message  # type: ignore[reportReturnType]
+        except ImportError:
+            pass
+
+        from google.protobuf.message import Message
+
+        if isinstance(from_, Message):
+            return Message  # type: ignore[reportReturnType]
+
+        raise TypeError("unknown message type")
 
     async def intercept_unary(
         self,
@@ -111,7 +130,7 @@ class DiInterceptor:
             self._manager.enter_context(Contexts.ROOT),
             self._manager.enter_context(Contexts.REQUEST) as rc,
         ):
-            rc.add_value(self._rc_type, ctx).add_value(self._m_type, request)
+            rc.add_value(self._rc_type, ctx).add_value(self._resolve_m_type(request), request)
             return await call_next(request, ctx)
 
     async def intercept_client_stream(
@@ -137,7 +156,7 @@ class DiInterceptor:
             self._manager.enter_context(Contexts.ROOT),
             self._manager.enter_context(Contexts.REQUEST) as rc,
         ):
-            rc.add_value(self._rc_type, ctx).add_value(self._m_type, request)
+            rc.add_value(self._rc_type, ctx).add_value(self._resolve_m_type(request), request)
             async for res in call_next(request, ctx):
                 yield res  # noqa: ASYNC119
 
