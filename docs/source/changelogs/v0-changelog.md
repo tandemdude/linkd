@@ -8,6 +8,13 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 
 <!-- next-changelog -->
 
+## v0.6.3 (2026-08-26)
+### Miscellaneous
+
+- Ensure ConnectRPC integration always registers the correct message type, rather than always registering the google type even when the protobuf-py type was in use.
+
+----
+
 ## v0.6.2 (2026-07-08)
 ### Bugfixes
 
