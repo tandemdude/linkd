@@ -35,7 +35,7 @@ import linkd
 
 # create a manager instance
 manager = linkd.DependencyInjectionManager()
-# register a dependency to on of the manager's registries
+# register a dependency to one of the manager's registries
 manager.registry_for(linkd.Contexts.ROOT).register_value(str, "thomm.o")
 
 # enable injection on a function with the inject decorator
