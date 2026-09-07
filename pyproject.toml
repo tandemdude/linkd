@@ -44,7 +44,7 @@ extensions = [
     "sanic==25.12.1",
     "grpcio==1.83.0",
     "protobuf==7.36.0",
-    "connectrpc==0.11.1"
+    "connectrpc==0.12.0"
 ]
 
 dev = ["nox==2026.8.17"]
