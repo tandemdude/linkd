@@ -8,6 +8,13 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 
 <!-- next-changelog -->
 
+## v0.6.4 (2026-09-10)
+### Miscellaneous
+
+- Fix registration of the incorrect ServicerContext type as a request-scoped dependency within gRPC extension.
+
+----
+
 ## v0.6.3 (2026-08-26)
 ### Miscellaneous
 
