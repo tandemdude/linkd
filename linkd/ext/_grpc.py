@@ -40,6 +40,7 @@ if t.TYPE_CHECKING:
     from collections.abc import Callable
 
 RequestT = t.TypeVar("RequestT", bound=message.Message)
+ServicerContext: t.TypeAlias = grpc.aio.ServicerContext[t.Any, t.Any]
 
 
 @t.final
@@ -84,23 +85,23 @@ class DiInterceptor(grpc_aio.ServerInterceptor):
     async def __unary_unary(
         self,
         request: RequestT,
-        context: grpc.ServicerContext,
+        context: ServicerContext,
         *,
-        behaviour: Callable[[RequestT, grpc.ServicerContext], t.Any],
+        behaviour: Callable[[RequestT, ServicerContext], t.Any],
     ) -> t.Any:
         async with (
             self._manager.enter_context(Contexts.ROOT),
             self._manager.enter_context(Contexts.REQUEST) as container,
         ):
             container.add_value(message.Message, request)
-            container.add_value(grpc.ServicerContext, context)
+            container.add_value(grpc.aio.ServicerContext, context)
 
             return await behaviour(request, context)
 
     async def __stream_unary(
         self,
         request_iterator: AsyncIterator[message.Message],
-        context: grpc.ServicerContext,
+        context: ServicerContext,
         *,
         behaviour: Callable[..., t.Any],
     ) -> t.Any:
@@ -108,23 +109,23 @@ class DiInterceptor(grpc_aio.ServerInterceptor):
             self._manager.enter_context(Contexts.ROOT),
             self._manager.enter_context(Contexts.REQUEST) as container,
         ):
-            container.add_value(grpc.ServicerContext, context)
+            container.add_value(grpc.aio.ServicerContext, context)
 
             return await behaviour(request_iterator, context)
 
     async def __unary_stream(
         self,
         request: RequestT,
-        context: grpc.ServicerContext,
+        context: ServicerContext,
         *,
-        behaviour: Callable[[RequestT, grpc.ServicerContext], t.Any],
+        behaviour: Callable[[RequestT, ServicerContext], t.Any],
     ) -> t.Any:
         async with (
             self._manager.enter_context(Contexts.ROOT),
             self._manager.enter_context(Contexts.REQUEST) as container,
         ):
             container.add_value(message.Message, request)
-            container.add_value(grpc.ServicerContext, context)
+            container.add_value(grpc.aio.ServicerContext, context)
 
             async for result in behaviour(request, context):
                 yield result  # noqa: ASYNC119
@@ -132,7 +133,7 @@ class DiInterceptor(grpc_aio.ServerInterceptor):
     async def __stream_stream(
         self,
         request_iterator: AsyncIterator[message.Message],
-        context: grpc.ServicerContext,
+        context: ServicerContext,
         *,
         behaviour: Callable[..., t.Any],
     ) -> t.Any:
@@ -140,7 +141,7 @@ class DiInterceptor(grpc_aio.ServerInterceptor):
             self._manager.enter_context(Contexts.ROOT),
             self._manager.enter_context(Contexts.REQUEST) as container,
         ):
-            container.add_value(grpc.ServicerContext, context)
+            container.add_value(grpc.aio.ServicerContext, context)
 
             async for result in behaviour(request_iterator, context):
                 yield result  # noqa: ASYNC119
@@ -157,7 +158,7 @@ class DiInterceptor(grpc_aio.ServerInterceptor):
 
         if rpc_handler.unary_unary:
             return grpc.unary_unary_rpc_method_handler(
-                functools.partial(self.__unary_unary, behaviour=rpc_handler.unary_unary),
+                functools.partial(self.__unary_unary, behaviour=rpc_handler.unary_unary),  # type: ignore[reportArgumentType]
                 rpc_handler.request_deserializer,
                 rpc_handler.response_serializer,
             )
@@ -169,7 +170,7 @@ class DiInterceptor(grpc_aio.ServerInterceptor):
             )
         elif rpc_handler.unary_stream:
             return grpc.unary_stream_rpc_method_handler(
-                functools.partial(self.__unary_stream, behaviour=rpc_handler.unary_stream),
+                functools.partial(self.__unary_stream, behaviour=rpc_handler.unary_stream),  # type: ignore[reportArgumentType]
                 rpc_handler.request_deserializer,
                 rpc_handler.response_serializer,
             )
