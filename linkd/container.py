@@ -144,7 +144,7 @@ class Container:
     def add_factory(
         self,
         typ: type[T],
-        factory: Callable[..., utils.MaybeAwaitable[T]],
+        factory: Callable[..., utils.MaybeAwaitable[T]] | None = None,
         *,
         teardown: Callable[[T], utils.MaybeAwaitable[None]] | None = None,
         lifetime: t.Literal[graph.Lifetime.SINGLETON] = graph.Lifetime.SINGLETON,
@@ -154,7 +154,7 @@ class Container:
     def add_factory(
         self,
         typ: type[T],
-        factory: Callable[..., utils.MaybeAwaitable[T]],
+        factory: Callable[..., utils.MaybeAwaitable[T]] | None = None,
         *,
         lifetime: t.Literal[graph.Lifetime.PROTOTYPE],
     ) -> t_ex.Self: ...
@@ -162,7 +162,7 @@ class Container:
     def add_factory(
         self,
         typ: type[T],
-        factory: Callable[..., utils.MaybeAwaitable[T]],
+        factory: Callable[..., utils.MaybeAwaitable[T]] | None = None,
         *,
         teardown: Callable[[T], utils.MaybeAwaitable[None]] | None = None,
         lifetime: graph.Lifetime = graph.Lifetime.SINGLETON,
@@ -173,7 +173,8 @@ class Container:
 
         Args:
             typ: The type to register the dependency as.
-            factory: The factory used to create the dependency.
+            factory: The factory used to create the dependency. If not provided, the dependency will be created
+                using the default constructor for the type.
             teardown: The teardown function to be called when the container is closed. Defaults to :obj:`None`. May
                 only be specified when lifetime is not set to :obj:`~linkd.graph.Lifetime.PROTOTYPE`.
             lifetime: The lifetime of the dependency. Defaults to :obj:`~linkd.graph.Lifetime.SINGLETON`.
@@ -216,7 +217,7 @@ class Container:
                 for edge in self._graph.out_edges(dependency_id):
                     self._graph.remove_edge(*edge)
 
-            graph.populate_graph_for_dependency(self._graph, dependency_id, factory, teardown, lifetime)
+            graph.populate_graph_for_dependency(self._graph, dependency_id, factory or typ, teardown, lifetime)
 
         self._on_change()
         return self

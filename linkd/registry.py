@@ -114,7 +114,7 @@ class Registry:
     def register_factory(
         self,
         typ: type[T],
-        factory: Callable[..., utils.MaybeAwaitable[T]],
+        factory: Callable[..., utils.MaybeAwaitable[T]] | None = None,
         *,
         teardown: Callable[[T], utils.MaybeAwaitable[None]] | None = None,
         lifetime: t.Literal[graph.Lifetime.SINGLETON] = graph.Lifetime.SINGLETON,
@@ -124,7 +124,7 @@ class Registry:
     def register_factory(
         self,
         typ: type[T],
-        factory: Callable[..., utils.MaybeAwaitable[T]],
+        factory: Callable[..., utils.MaybeAwaitable[T]] | None = None,
         *,
         lifetime: t.Literal[graph.Lifetime.PROTOTYPE],
     ) -> t_ex.Self: ...
@@ -132,7 +132,7 @@ class Registry:
     def register_factory(
         self,
         typ: type[T],
-        factory: Callable[..., utils.MaybeAwaitable[T]],
+        factory: Callable[..., utils.MaybeAwaitable[T]] | None = None,
         *,
         teardown: Callable[[T], utils.MaybeAwaitable[None]] | None = None,
         lifetime: graph.Lifetime = graph.Lifetime.SINGLETON,
@@ -144,7 +144,8 @@ class Registry:
             typ: The type to register the dependency as.
             factory: The factory used to create the dependency. A factory method may take any number of parameters.
                 The parameters will all attempt to be dependency-injected when creating the dependency. Any default
-                parameter values will be ignored.
+                parameter values will be ignored. If not provided, the dependency will be created
+                using the default constructor for the type.
             teardown: The teardown function to be called when the container is closed. Defaults to :obj:`None`. May
                 only be specified when lifetime is not set to :obj:`~linkd.graph.Lifetime.PROTOTYPE`.
             lifetime: The lifetime of the dependency. Defaults to :obj:`~linkd.graph.Lifetime.SINGLETON`.
@@ -182,6 +183,6 @@ class Registry:
                 for edge in self._graph.out_edges(dependency_id):
                     self._graph.remove_edge(*edge)
 
-            graph.populate_graph_for_dependency(self._graph, dependency_id, factory, teardown, lifetime)
+            graph.populate_graph_for_dependency(self._graph, dependency_id, factory or typ, teardown, lifetime)
 
         return self
