@@ -8,6 +8,13 @@ Below are all the changelogs for versions of `linkd` since `0.0.0`.
 
 <!-- next-changelog -->
 
+## v0.6.5 (2026-09-14)
+### Features
+
+- Use the default constructor for the type when a factory method is not specified.
+
+----
+
 ## v0.6.4 (2026-09-10)
 ### Miscellaneous
 
