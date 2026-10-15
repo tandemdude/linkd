@@ -57,7 +57,7 @@ test = [
 ]
 slotscheck = ["slotscheck>=0.19.0, <1", {include-group = "extensions"}]
 release = ["flit>=4.0,<5"]
-changelog = ["towncrier==25.8.0"]
+changelog = ["towncrier==26.9.0"]
 
 docs = [
     "sphinx>=8.0.2, <10",
